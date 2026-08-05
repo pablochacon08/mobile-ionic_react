@@ -1,107 +1,153 @@
-import React, { useState } from 'react';
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonItem, IonLabel, IonInput, IonButton, IonIcon, IonList, IonListHeader, IonText } from '@ionic/react';
-import { addCircleOutline, warningOutline, checkmarkCircleOutline } from 'ionicons/icons';
-import './Tab2.css';
-
-interface Categoria {
-  id: number;
-  nombre: string;
-  peso: number; // Porcentaje (ej. 20%)
-  notaObtenida: number; // Sobre 100
-}
+import React, { useState, useMemo } from 'react';
+import {
+  IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, IonCardContent,
+  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote
+} from '@ionic/react';
+import { warningOutline, checkmarkCircleOutline, flaskOutline } from 'ionicons/icons';
+import { useMaterias, Categoria } from '../context/MateriasContext';
+import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas } from '../utils/calculos';
 
 const Tab2: React.FC = () => {
-  const [notaDeseada, setNotaDeseada] = useState<number>(70);
-  const [pesoExamen, setPesoExamen] = useState<number>(40);
-  const [categorias, setCategorias] = useState<Categoria[]>([
-    { id: 1, nombre: 'Lecciones', peso: 20, notaObtenida: 85 },
-    { id: 2, nombre: 'Deberes', peso: 20, notaObtenida: 90 },
-    { id: 3, nombre: 'Control de Lectura', peso: 20, notaObtenida: 75 }
-  ]);
+  const { materias } = useMaterias();
+  const [materiaId, setMateriaId] = useState<string>(materias[0]?.id ?? '');
+  // Notas simuladas por categoría (no se guardan, solo son para "qué pasaría si...")
+  const [simulacion, setSimulacion] = useState<Record<string, number>>({});
 
-  // Lógica Matemática
-  const notaAcumulada = categorias.reduce((acc, curr) => acc + (curr.notaObtenida * (curr.peso / 100)), 0);
-  const pesoTotalCategorias = categorias.reduce((acc, curr) => acc + curr.peso, 0);
-  const totalPeso = pesoTotalCategorias + pesoExamen; // Debería ser 100%
-  
-  // Cálculo de cuánto falta para la nota deseada
-  const puntosFaltantes = notaDeseada - notaAcumulada;
-  const notaExamenNecesaria = puntosFaltantes / (pesoExamen / 100);
+  const materia = materias.find(m => m.id === materiaId);
 
-  const actualizarCategoria = (id: number, campo: keyof Categoria, valor: number) => {
-    const nuevasCategorias = categorias.map(c => c.id === id ? { ...c, [campo]: valor } : c);
-    setCategorias(nuevasCategorias);
+  // Cuando cambia la materia seleccionada, reiniciamos la simulación
+  const handleCambiarMateria = (id: string) => {
+    setMateriaId(id);
+    setSimulacion({});
   };
+
+  const statsReales = materia ? calcularEstadisticas(materia) : null;
+
+  // Aplicamos la simulación sobre una copia de la materia, sin tocar los datos guardados
+  const statsSimulados = useMemo(() => {
+    if (!materia) return null;
+    const key = getActiveKey(materia.etapa);
+    const listaActiva = materia[key] as Categoria[];
+    const listaSimulada = listaActiva.map(cat =>
+      simulacion[cat.id] !== undefined ? { ...cat, subActividades: [], notaGlobalRapida: simulacion[cat.id] } : cat
+    );
+    const materiaSimulada = { ...materia, [key]: listaSimulada };
+    return calcularEstadisticas(materiaSimulada);
+  }, [materia, simulacion]);
+
+  if (!materia || !statsReales || !statsSimulados) {
+    return (
+      <IonPage>
+        <IonHeader className="ion-no-border">
+          <IonToolbar>
+            <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen className="ion-padding">
+          <IonText color="medium">
+            <p>Todavía no tienes materias creadas. Ve al Dashboard y agrega una para poder usar el predictor.</p>
+          </IonText>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  const tituloEtapa = materia.etapa === 1 ? 'Primer Parcial' : materia.etapa === 2 ? 'Segundo Parcial' : 'Componente Práctico';
+  const hayCambiosSimulados = Object.keys(simulacion).length > 0;
 
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
-        <IonToolbar color="dark">
-          <IonTitle style={{ fontWeight: 'bold' }}>Predictor de Parcial</IonTitle>
+        <IonToolbar>
+          <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen className="ion-padding" color="dark">
-        
-        {/* Panel de Configuración Global */}
-        <IonCard style={{ background: '#1e1e1e', borderRadius: '15px' }}>
-          <IonCardHeader>
-            <IonCardTitle style={{ color: '#4c8dff', fontSize: '1.2rem' }}>Configuración del Parcial</IonCardTitle>
-          </IonCardHeader>
+      <IonContent fullscreen className="ion-padding">
+
+        <IonItem style={{ borderRadius: '12px', marginBottom: '20px' }}>
+          <IonLabel position="stacked" color="medium">Materia</IonLabel>
+          <IonSelect value={materiaId} onIonChange={e => handleCambiarMateria(e.detail.value)} interface="popover">
+            {materias.map(m => (
+              <IonSelectOption key={m.id} value={m.id}>{m.nombre}</IonSelectOption>
+            ))}
+          </IonSelect>
+        </IonItem>
+
+        <IonCard style={{ borderRadius: '12px', borderTop: `4px solid var(--ion-color-${materia.color})` }}>
           <IonCardContent>
-            <IonItem color="transparent" lines="full">
-              <IonLabel position="stacked" style={{ color: '#aaa' }}>Nota Mínima para Aprobar</IonLabel>
-              <IonInput type="number" value={notaDeseada} onIonChange={e => setNotaDeseada(parseFloat(e.detail.value!) || 0)} style={{ color: '#fff', fontSize: '1.5rem' }} />
-            </IonItem>
-            <IonItem color="transparent" lines="full">
-              <IonLabel position="stacked" style={{ color: '#aaa' }}>Peso del Examen Final (%)</IonLabel>
-              <IonInput type="number" value={pesoExamen} onIonChange={e => setPesoExamen(parseFloat(e.detail.value!) || 0)} style={{ color: '#fff', fontSize: '1.5rem' }} />
-            </IonItem>
+            <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Meta</p>
+                <p style={{ margin: '5px 0 0', fontWeight: '800', fontSize: '1.3rem' }}>{materia.notaDeseada}</p>
+              </div>
+              <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Acumulado Actual</p>
+                <p style={{ margin: '5px 0 0', fontWeight: '800', fontSize: '1.3rem' }}>{statsReales.acumuladoGlobal.toFixed(1)}</p>
+              </div>
+              <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>
+                  {hayCambiosSimulados ? 'Simulado' : 'Acumulado'}
+                </p>
+                <p style={{ margin: '5px 0 0', fontWeight: '800', fontSize: '1.3rem', color: hayCambiosSimulados ? `var(--ion-color-${materia.color})` : 'var(--ion-text-color)' }}>
+                  {statsSimulados.acumuladoGlobal.toFixed(1)}
+                </p>
+              </div>
+            </div>
           </IonCardContent>
         </IonCard>
 
-        {/* Panel de Categorías (Lecciones, Deberes, etc.) */}
-        <IonList style={{ background: 'transparent' }}>
-          <IonListHeader style={{ paddingLeft: '5px' }}>
-            <IonLabel style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 'bold' }}>Mis Calificaciones</IonLabel>
-          </IonListHeader>
-          
-          {categorias.map((cat) => (
-            <IonCard key={cat.id} style={{ background: '#2a2a2a', margin: '10px 0', borderRadius: '10px' }}>
-              <IonItem color="transparent" lines="none">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '25px 0 10px 5px' }}>
+          <IonIcon icon={flaskOutline} color="medium" />
+          <IonText color="medium"><p style={{ margin: 0, fontSize: '0.85rem' }}>Simula notas para <strong>{tituloEtapa}</strong> sin guardarlas</p></IonText>
+        </div>
+
+        {statsReales.listaActiva.map((cat) => {
+          const notaReal = calcularNotaDeCategoria(cat);
+          const valorSimulado = simulacion[cat.id];
+
+          return (
+            <IonCard key={cat.id} style={{ borderRadius: '10px', margin: '0 0 10px 0' }}>
+              <IonItem lines="none">
                 <IonLabel>
-                  <h3 style={{ color: '#fff', fontWeight: 'bold' }}>{cat.nombre}</h3>
+                  <h3 style={{ fontWeight: '700', fontSize: '0.95rem' }}>{cat.nombre}</h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Peso {cat.peso}% • Nota real: {notaReal.toFixed(1)}</p>
                 </IonLabel>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <IonInput type="number" placeholder="Peso %" value={cat.peso} onIonChange={e => actualizarCategoria(cat.id, 'peso', parseFloat(e.detail.value!) || 0)} style={{ width: '60px', textAlign: 'center', background: '#1e1e1e', borderRadius: '5px', color: '#4c8dff' }} />
-                  <IonInput type="number" placeholder="Nota" value={cat.notaObtenida} onIonChange={e => actualizarCategoria(cat.id, 'notaObtenida', parseFloat(e.detail.value!) || 0)} style={{ width: '60px', textAlign: 'center', background: '#1e1e1e', borderRadius: '5px', color: '#2dd36f' }} />
-                </div>
+                <IonInput
+                  type="number"
+                  placeholder={notaReal.toFixed(0)}
+                  value={valorSimulado ?? ''}
+                  onIonChange={e => {
+                    const val = e.detail.value;
+                    setSimulacion(prev => {
+                      const copia = { ...prev };
+                      if (!val) delete copia[cat.id];
+                      else copia[cat.id] = parseFloat(val) || 0;
+                      return copia;
+                    });
+                  }}
+                  style={{ width: '60px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
+                />
               </IonItem>
             </IonCard>
-          ))}
-        </IonList>
+          );
+        })}
 
-        {/* Verificación de Integridad del 100% */}
-        {totalPeso !== 100 && (
-          <IonText color="danger">
-            <p style={{ textAlign: 'center', fontSize: '0.9rem' }}>
-              <IonIcon icon={warningOutline} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              ¡Atención! La suma de pesos es {totalPeso}%. Debe ser 100%.
-            </p>
-          </IonText>
-        )}
-
-        {/* Tarjeta de Resultado Dinámico */}
-        <IonCard style={{ background: notaExamenNecesaria > 100 ? '#ff4961' : 'linear-gradient(135deg, #2dd36f 0%, #1b8a47 100%)', marginTop: '20px', borderRadius: '15px' }}>
+        <IonCard style={{ background: statsSimulados.acumuladoGlobal >= materia.notaDeseada ? 'var(--ion-color-success)' : 'var(--ion-color-step-100)', marginTop: '25px', borderRadius: '15px' }}>
           <IonCardContent className="ion-text-center">
-            <h2 style={{ color: '#fff', margin: '0', fontSize: '1.2rem' }}>En el examen necesitas:</h2>
-            <h1 style={{ fontSize: '4rem', fontWeight: 'bold', color: '#fff', margin: '10px 0' }}>
-              {notaExamenNecesaria > 0 ? notaExamenNecesaria.toFixed(1) : '0'}
-            </h1>
-            <p style={{ color: '#fff', opacity: 0.9 }}>
-              {notaExamenNecesaria > 100 
-                ? "Matemáticamente imposible. Necesitas mejorar otros rubros."
-                : <><IonIcon icon={checkmarkCircleOutline} style={{ verticalAlign: 'middle' }}/> ¡Es completamente lograble!</>}
-            </p>
+            {statsSimulados.acumuladoGlobal >= materia.notaDeseada ? (
+              <>
+                <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '2rem', color: 'var(--ion-color-success-contrast)' }} />
+                <p style={{ color: 'var(--ion-color-success-contrast)', fontWeight: '700', margin: '5px 0 0' }}>Con estos valores, alcanzas tu meta</p>
+              </>
+            ) : (
+              <>
+                <IonIcon icon={warningOutline} style={{ fontSize: '2rem', color: 'var(--ion-color-medium)' }} />
+                <p style={{ color: 'var(--ion-text-color)', fontWeight: '700', margin: '5px 0 0' }}>
+                  Te faltan {(materia.notaDeseada - statsSimulados.acumuladoGlobal).toFixed(1)} puntos para tu meta
+                </p>
+                <IonNote>Necesitas en promedio {statsSimulados.notaNecesaria.toFixed(1)}/100 en lo que falta</IonNote>
+              </>
+            )}
           </IonCardContent>
         </IonCard>
 
