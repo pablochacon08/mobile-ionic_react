@@ -7,7 +7,8 @@ import {
 import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
-import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas } from '../utils/calculos';
+import { useEscalas } from '../context/EscalasContext';
+import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala } from '../utils/calculos';
 import './Tab1.css';
 
 const CircularProgress = ({ value, color }: { value: number, color: string }) => {
@@ -38,6 +39,7 @@ const CircularProgress = ({ value, color }: { value: number, color: string }) =>
 
 const Tab1: React.FC = () => {
   const { materias, agregarMateria, actualizarMateria } = useMaterias();
+  const { escalas } = useEscalas();
 
   const [isAddMateriaOpen, setIsAddMateriaOpen] = useState(false);
   const [nuevaMateriaNombre, setNuevaMateriaNombre] = useState('');
@@ -142,7 +144,9 @@ const Tab1: React.FC = () => {
                 <IonItem lines="none" color="transparent">
                   <IonLabel>
                     <h2 style={{ fontWeight: '700', fontSize: '1.2rem', color: 'var(--ion-text-color)' }}>{materia.nombre}</h2>
-                    <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem' }}>Global Acumulado</p>
+                    <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem' }}>
+                      {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
+                    </p>
                   </IonLabel>
                   <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
                 </IonItem>
@@ -159,6 +163,7 @@ const Tab1: React.FC = () => {
           {materiaSeleccionada && (() => {
             const stats = calcularEstadisticas(materiaSeleccionada);
             const tituloEtapa = materiaSeleccionada.etapa === 1 ? 'Primer Parcial' : materiaSeleccionada.etapa === 2 ? 'Segundo Parcial' : 'Componente Práctico';
+            const etiquetaEscala = obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas);
 
             if (stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada && !celebratedRef.current[materiaSeleccionada.id]) {
               celebratedRef.current[materiaSeleccionada.id] = true;
@@ -184,6 +189,9 @@ const Tab1: React.FC = () => {
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Nota Global</p>
                         <p style={{ margin: '12px 0 0', fontWeight: '700', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{stats.acumuladoGlobal.toFixed(1)}</p>
+                        {etiquetaEscala && (
+                          <p style={{ margin: '2px 0 0', fontSize: '0.7rem', fontWeight: '700', color: `var(--ion-color-${materiaSeleccionada.color})` }}>{etiquetaEscala}</p>
+                        )}
                       </div>
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Necesitas</p>
