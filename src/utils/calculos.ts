@@ -1,4 +1,5 @@
 import { Materia, Categoria } from '../context/MateriasContext';
+import { RangoEscala } from '../context/EscalasContext';
 
 export const getActiveKey = (etapa: number): keyof Materia => {
   return etapa === 1 ? 'categoriasP1' : etapa === 2 ? 'categoriasP2' : 'categoriasPractico';
@@ -48,4 +49,9 @@ export const calcularEstadisticas = (mat: Materia) => {
   }
 
   return { notaP1, notaP2, notaPr, acumuladoGlobal, notaNecesaria, pesoActivoCargado, notaActivaParcial, listaActiva };
+};
+
+export const obtenerEtiquetaEscala = (valor: number, escalas: RangoEscala[]): string | null => {
+  const rango = escalas.find(r => valor >= r.minimo && valor <= r.maximo);
+  return rango ? rango.etiqueta : null;
 };
