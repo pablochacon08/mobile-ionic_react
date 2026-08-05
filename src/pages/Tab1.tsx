@@ -1,45 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { 
-  IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, 
-  IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon, 
+import {
+  IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
+  IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader
 } from '@ionic/react';
-import { add, close, chevronForward, trashOutline, addCircleOutline, arrowForwardOutline, arrowUndoOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
+import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
+import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas } from '../utils/calculos';
 import './Tab1.css';
-
-interface SubActividad {
-  id: string;
-  nombre: string;
-  notaObtenida: number; 
-  notaMaxima: number;  
-}
-
-interface Categoria {
-  id: string;
-  nombre: string;
-  peso: number;
-  
-  notaGlobalRapida: number; 
-  subActividades: SubActividad[]; 
-}
-
-type EtapaEvaluacion = 1 | 2 | 3; 
-
-interface Materia {
-  id: string;
-  nombre: string;
-  color: string;
-  notaDeseada: number;
-  etapa: EtapaEvaluacion;
-  pesoTeorico: number; 
-  pesoPractico: number;
-  categoriasP1: Categoria[]; 
-  categoriasP2: Categoria[];
-  categoriasPractico: Categoria[];
-}
-
-const ionicColors = ['primary', 'secondary', 'tertiary', 'success', 'warning'];
 
 const CircularProgress = ({ value, color }: { value: number, color: string }) => {
   const size = 50;
@@ -53,11 +22,11 @@ const CircularProgress = ({ value, color }: { value: number, color: string }) =>
     <div style={{ position: 'relative', width: size, height: size, minWidth: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         <circle stroke="var(--ion-color-step-150)" fill="transparent" strokeWidth={strokeWidth} r={radius} cx={size / 2} cy={size / 2} />
-        <circle 
-          stroke={`var(--ion-color-${color})`} fill="transparent" strokeWidth={strokeWidth} 
-          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} 
-          style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} 
-          r={radius} cx={size / 2} cy={size / 2} 
+        <circle
+          stroke={`var(--ion-color-${color})`} fill="transparent" strokeWidth={strokeWidth}
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+          r={radius} cx={size / 2} cy={size / 2}
         />
       </svg>
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--ion-text-color)' }}>
@@ -68,29 +37,7 @@ const CircularProgress = ({ value, color }: { value: number, color: string }) =>
 };
 
 const Tab1: React.FC = () => {
-  const [materias, setMaterias] = useState<Materia[]>([
-    {
-      id: '1',
-      nombre: 'Sistemas Digitales',
-      color: 'tertiary',
-      notaDeseada: 70,
-      etapa: 1,
-      pesoTeorico: 70,
-      pesoPractico: 30,
-      categoriasP1: [
-        { 
-          id: 'c1', nombre: 'Control de Lectura', peso: 50, notaGlobalRapida: 0, 
-          subActividades: [
-            { id: 's1', nombre: 'C1', notaObtenida: 4, notaMaxima: 5 },
-            { id: 's2', nombre: 'C2', notaObtenida: 5, notaMaxima: 5 }
-          ]
-        },
-        { id: 'c2', nombre: 'Examen', peso: 50, notaGlobalRapida: 60, subActividades: [] }
-      ],
-      categoriasP2: [],
-      categoriasPractico: []
-    }
-  ]);
+  const { materias, agregarMateria, actualizarMateria } = useMaterias();
 
   const [isAddMateriaOpen, setIsAddMateriaOpen] = useState(false);
   const [nuevaMateriaNombre, setNuevaMateriaNombre] = useState('');
@@ -98,18 +45,9 @@ const Tab1: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const celebratedRef = useRef<Record<string, boolean>>({});
 
-
-  const agregarMateria = () => {
+  const handleAgregarMateria = () => {
     if (!nuevaMateriaNombre.trim()) return;
-    const nuevaMateria: Materia = {
-      id: Date.now().toString(),
-      nombre: nuevaMateriaNombre,
-      color: ionicColors[Math.floor(Math.random() * ionicColors.length)],
-      notaDeseada: 70, etapa: 1, pesoTeorico: 70, pesoPractico: 30,
-      categoriasP1: [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }],
-      categoriasP2: [], categoriasPractico: []
-    };
-    setMaterias([...materias, nuevaMateria]);
+    agregarMateria(nuevaMateriaNombre);
     setNuevaMateriaNombre('');
     setIsAddMateriaOpen(false);
   };
@@ -118,11 +56,7 @@ const Tab1: React.FC = () => {
     if (!materiaSeleccionada) return;
     const actualizada = { ...materiaSeleccionada, [campo]: valor };
     setMateriaSeleccionada(actualizada);
-    setMaterias(materias.map(m => m.id === actualizada.id ? actualizada : m));
-  };
-
-  const getActiveKey = (etapa: number): keyof Materia => {
-    return etapa === 1 ? 'categoriasP1' : etapa === 2 ? 'categoriasP2' : 'categoriasPractico';
+    actualizarMateria(actualizada);
   };
 
   const agregarCategoria = () => {
@@ -146,7 +80,6 @@ const Tab1: React.FC = () => {
     actualizarMateriaActual(key, lista.filter(c => c.id !== idCat));
   };
 
-
   const agregarSubActividad = (idCat: string) => {
     if (!materiaSeleccionada) return;
     const key = getActiveKey(materiaSeleccionada.etapa);
@@ -159,7 +92,7 @@ const Tab1: React.FC = () => {
     if (!materiaSeleccionada) return;
     const key = getActiveKey(materiaSeleccionada.etapa);
     const lista = materiaSeleccionada[key] as Categoria[];
-    
+
     actualizarMateriaActual(key, lista.map(cat => {
       if (cat.id !== idCat) return cat;
       const nuevasSubs = cat.subActividades.map(sub => sub.id === idSub ? { ...sub, [campo]: valor } : sub);
@@ -174,60 +107,11 @@ const Tab1: React.FC = () => {
     actualizarMateriaActual(key, lista.map(cat => cat.id === idCat ? { ...cat, subActividades: cat.subActividades.filter(s => s.id !== idSub) } : cat));
   };
 
-
-  const calcularNotaDeCategoria = (cat: Categoria): number => {
-    if (cat.subActividades.length === 0) return cat.notaGlobalRapida; // Modo directo
-    
-    // Si hay sub-actividades, sumamos todo lo que sacó sobre todo lo que valían.
-    let sumaObtenida = 0;
-    let sumaMaxima = 0;
-    cat.subActividades.forEach(sub => {
-      sumaObtenida += sub.notaObtenida;
-      sumaMaxima += sub.notaMaxima;
-    });
-    
-    if (sumaMaxima === 0) return 0;
-    return (sumaObtenida / sumaMaxima) * 100;
-  };
-
-  const calcularEstadisticas = (mat: Materia) => {
-    const notaP1 = mat.categoriasP1.reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
-    const notaP2 = mat.categoriasP2.reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
-    const notaPr = mat.categoriasPractico.reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
-
-    const pesoGlobalP1 = mat.pesoTeorico / 2;
-    const pesoGlobalP2 = mat.pesoTeorico / 2;
-    const pesoGlobalPr = mat.pesoPractico;
-
-    const acumuladoGlobal = (notaP1 * (pesoGlobalP1 / 100)) + 
-                            (notaP2 * (pesoGlobalP2 / 100)) + 
-                            (notaPr * (pesoGlobalPr / 100));
-
-    const listaActiva = mat[getActiveKey(mat.etapa)] as Categoria[];
-    const pesoActivoCargado = listaActiva.reduce((acc, cat) => acc + cat.peso, 0);
-    const notaActivaParcial = mat.etapa === 1 ? notaP1 : mat.etapa === 2 ? notaP2 : notaPr;
-    
-    const faltanteActivo = 100 - pesoActivoCargado;
-    let pesoGlobalRestante = 0;
-    
-    if (mat.etapa === 1) pesoGlobalRestante = (faltanteActivo / 100 * pesoGlobalP1) + pesoGlobalP2 + pesoGlobalPr;
-    else if (mat.etapa === 2) pesoGlobalRestante = (faltanteActivo / 100 * pesoGlobalP2) + pesoGlobalPr;
-    else pesoGlobalRestante = (faltanteActivo / 100 * pesoGlobalPr);
-
-    let notaNecesaria = 0;
-    if (pesoGlobalRestante > 0) {
-      notaNecesaria = (mat.notaDeseada - acumuladoGlobal) / (pesoGlobalRestante / 100);
-    }
-
-    return { notaP1, notaP2, notaPr, acumuladoGlobal, notaNecesaria, pesoActivoCargado, notaActivaParcial, listaActiva };
-  };
-
-  // --- Cambiar de Etapa de Parcial ---
   const cambiarEtapa = (nuevaEtapa: EtapaEvaluacion) => {
     if (!materiaSeleccionada) return;
     let nuevasCatsP2 = materiaSeleccionada.categoriasP2;
     let nuevasCatsPr = materiaSeleccionada.categoriasPractico;
-    
+
     if (nuevaEtapa === 2 && nuevasCatsP2.length === 0) {
       nuevasCatsP2 = [{ id: Date.now().toString(), nombre: 'Examen Parcial 2', peso: 100, notaGlobalRapida: 0, subActividades: [] }];
     }
@@ -237,9 +121,8 @@ const Tab1: React.FC = () => {
 
     const actualizada = { ...materiaSeleccionada, etapa: nuevaEtapa, categoriasP2: nuevasCatsP2, categoriasPractico: nuevasCatsPr };
     setMateriaSeleccionada(actualizada);
-    setMaterias(materias.map(m => m.id === actualizada.id ? actualizada : m));
+    actualizarMateria(actualizada);
   };
-
 
   return (
     <IonPage>
@@ -248,7 +131,7 @@ const Tab1: React.FC = () => {
           <IonTitle style={{ fontWeight: '800' }}>Mis Calificaciones</IonTitle>
         </IonToolbar>
       </IonHeader>
-      
+
       <IonContent fullscreen className="ion-padding">
         <IonList style={{ background: 'transparent' }}>
           {materias.map((materia) => {
@@ -291,7 +174,7 @@ const Tab1: React.FC = () => {
                     <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.8rem' }}>{materiaSeleccionada.nombre}</h1>
                     <IonIcon icon={close} style={{ fontSize: '2rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => setIsDetailOpen(false)} />
                   </div>
-                  
+
                   <div style={{ background: 'var(--ion-card-background)', borderRadius: '12px', padding: '20px', marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
                       <div style={{ flex: 1 }}>
@@ -328,7 +211,6 @@ const Tab1: React.FC = () => {
                     </IonItem>
                   </IonCard>
 
-  
                   {materiaSeleccionada.etapa > 1 && (
                     <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
                       <div style={{ flex: 1, padding: '10px', background: 'var(--ion-color-step-100)', borderRadius: '8px', textAlign: 'center' }}>
@@ -351,7 +233,6 @@ const Tab1: React.FC = () => {
                     </div>
                   </div>
 
-      
                   <IonAccordionGroup style={{ marginTop: '15px' }}>
                     {stats.listaActiva.map((cat) => {
                       const notaCalculada = calcularNotaDeCategoria(cat);
@@ -364,10 +245,8 @@ const Tab1: React.FC = () => {
                               <h3 style={{ fontWeight: '700', fontSize: '0.95rem' }}>{cat.nombre}</h3>
                               {tieneSubs && <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>{cat.subActividades.length} actividades • Promedio: {notaCalculada.toFixed(1)}/100</p>}
                             </IonLabel>
-                            
-                            {/* Control Frontal del Componente */}
+
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '10px' }} onClick={e => e.stopPropagation()}>
-                              {/* Si NO tiene subactividades, se permite ingresar la nota manual. Si las tiene, es solo lectura. */}
                               <div style={{ textAlign: 'center' }}>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', display: 'block' }}>Nota/100</span>
                                 <IonInput type="number" readonly={tieneSubs} value={tieneSubs ? notaCalculada.toFixed(1) : cat.notaGlobalRapida} onIonChange={e => actualizarCategoria(cat.id, 'notaGlobalRapida', parseFloat(e.detail.value!) || 0)} style={{ width: '50px', textAlign: 'center', background: tieneSubs ? 'transparent' : 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold', color: 'var(--ion-color-primary)' }} />
@@ -379,10 +258,10 @@ const Tab1: React.FC = () => {
                               <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.2rem', marginLeft: '5px', opacity: 0.8 }} onClick={() => eliminarCategoria(cat.id)} />
                             </div>
                           </IonItem>
-                        
+
                           <div slot="content" style={{ padding: '0 15px 15px 15px' }}>
                             <div style={{ background: 'var(--ion-card-background)', borderRadius: '8px', padding: '10px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
-                              
+
                               <IonListHeader style={{ padding: 0, minHeight: 'auto', marginBottom: '10px' }}>
                                 <IonLabel style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--ion-color-medium)', margin: 0 }}>Desglose (Puntajes Específicos)</IonLabel>
                               </IonListHeader>
@@ -391,7 +270,7 @@ const Tab1: React.FC = () => {
                                 <IonItem key={sub.id} lines="none" style={{ '--min-height': '35px', '--background': 'transparent' }}>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)', marginRight: '10px' }}>#{index + 1}</span>
                                   <IonInput value={sub.nombre} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'nombre', e.detail.value!)} style={{ fontSize: '0.9rem' }} placeholder="Nombre" />
-                                  
+
                                   <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <IonInput type="number" value={sub.notaObtenida} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'notaObtenida', parseFloat(e.detail.value!) || 0)} style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }} />
                                     <span style={{ color: 'var(--ion-color-medium)' }}>/</span>
@@ -443,7 +322,7 @@ const Tab1: React.FC = () => {
             );
           })()}
         </IonModal>
-        
+
         <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.4} breakpoints={[0, 0.4]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
           <IonContent className="ion-padding">
             <h2 style={{fontWeight:'800', marginTop:'15px', color: 'var(--ion-text-color)'}}>Nueva Asignatura</h2>
@@ -451,7 +330,7 @@ const Tab1: React.FC = () => {
               <IonLabel position="floating" color="medium">Nombre de la materia</IonLabel>
               <IonInput value={nuevaMateriaNombre} onIonChange={e => setNuevaMateriaNombre(e.detail.value!)} style={{ fontWeight: '600' }} />
             </IonItem>
-            <IonButton expand="block" style={{ marginTop: '30px', borderRadius: '8px', fontWeight: 'bold' }} onClick={agregarMateria}>Crear Asignatura</IonButton>
+            <IonButton expand="block" style={{ marginTop: '30px', borderRadius: '8px', fontWeight: 'bold' }} onClick={handleAgregarMateria}>Crear Asignatura</IonButton>
           </IonContent>
         </IonModal>
       </IonContent>
