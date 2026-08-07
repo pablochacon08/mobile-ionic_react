@@ -3,15 +3,27 @@ import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
   IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
-  IonSpinner, IonToast, useIonAlert
+  IonSpinner, IonToast, useIonAlert, IonItemSliding, IonItemOptions, IonItemOption
 } from '@ionic/react';
-import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
+import { Share } from '@capacitor/share';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
 import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import './Tab1.css';
+
+const vibrar = async (tipo: 'ligero' | 'medio' | 'exito') => {
+  try {
+    if (tipo === 'ligero') await Haptics.impact({ style: ImpactStyle.Light });
+    else if (tipo === 'medio') await Haptics.impact({ style: ImpactStyle.Medium });
+    else if (tipo === 'exito') await Haptics.notification({ type: NotificationType.Success });
+  } catch (error) {
+    // Silencioso: en navegador de escritorio simplemente no vibra
+  }
+};
 
 const CircularProgress = ({ value, color }: { value: number, color: string }) => {
   const size = 50;
@@ -81,12 +93,10 @@ const Tab1: React.FC = () => {
   const [mensajeToast, setMensajeToast] = useState('');
   const celebratedRef = useRef<Record<string, boolean>>({});
 
-  // Estadísticas de cada materia, calculadas una sola vez por render
   const materiasConStats = useMemo(() => {
     return materias.map(m => ({ materia: m, stats: calcularEstadisticas(m) }));
   }, [materias]);
 
-  // Ordenadas: primero las que más lejos están de su meta (más urgentes)
   const materiasOrdenadas = useMemo(() => {
     return [...materiasConStats].sort((a, b) => {
       const riesgoA = a.materia.notaDeseada - a.stats.acumuladoGlobal;
@@ -113,27 +123,56 @@ const Tab1: React.FC = () => {
     setIsAddMateriaOpen(false);
     setMensajeToast('Materia creada correctamente');
     setMostrarToast(true);
+    vibrar('ligero');
   };
 
-  const confirmarEliminarMateria = () => {
-    if (!materiaSeleccionada) return;
+  // Reutilizable: eliminar con confirmación, ya sea desde el modal de detalle o desde el deslizar
+  const eliminarConConfirmacion = (materia: Materia, cerrarModalDespues: boolean) => {
     presentAlert({
       header: 'Eliminar materia',
-      message: `¿Seguro que quieres eliminar "${materiaSeleccionada.nombre}"? Esta acción no se puede deshacer.`,
+      message: `¿Seguro que quieres eliminar "${materia.nombre}"? Esta acción no se puede deshacer.`,
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
         {
           text: 'Eliminar',
           role: 'destructive',
           handler: () => {
-            eliminarMateria(materiaSeleccionada.id);
-            setIsDetailOpen(false);
+            eliminarMateria(materia.id);
+            if (cerrarModalDespues) setIsDetailOpen(false);
             setMensajeToast('Materia eliminada');
             setMostrarToast(true);
+            vibrar('medio');
           }
         }
       ]
     });
+  };
+
+  const compartirMateria = async () => {
+    if (!materiaSeleccionada) return;
+    const stats = calcularEstadisticas(materiaSeleccionada);
+    const etiqueta = obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas);
+
+    const lineas = [
+      `📊 ${materiaSeleccionada.nombre}`,
+      `Nota acumulada: ${stats.acumuladoGlobal.toFixed(1)}${etiqueta ? ` (${etiqueta})` : ''}`,
+      `Meta: ${materiaSeleccionada.notaDeseada}`,
+    ];
+    if (stats.acumuladoGlobal < materiaSeleccionada.notaDeseada) {
+      lineas.push(`Necesito ${stats.notaNecesaria.toFixed(1)}/100 en lo que falta para alcanzar mi meta`);
+    } else {
+      lineas.push('¡Meta alcanzada! 🎉');
+    }
+    lineas.push('', 'Calculado con Mis Calificaciones');
+
+    try {
+      await Share.share({
+        title: materiaSeleccionada.nombre,
+        text: lineas.join('\n')
+      });
+    } catch (error) {
+      console.log('Compartir cancelado o no disponible:', error);
+    }
   };
 
   const actualizarMateriaActual = (campo: keyof Materia, valor: any) => {
@@ -162,6 +201,7 @@ const Tab1: React.FC = () => {
     const key = getActiveKey(materiaSeleccionada.etapa);
     const lista = materiaSeleccionada[key] as Categoria[];
     actualizarMateriaActual(key, lista.filter(c => c.id !== idCat));
+    vibrar('ligero');
   };
 
   const agregarSubActividad = (idCat: string) => {
@@ -189,6 +229,7 @@ const Tab1: React.FC = () => {
     const key = getActiveKey(materiaSeleccionada.etapa);
     const lista = materiaSeleccionada[key] as Categoria[];
     actualizarMateriaActual(key, lista.map(cat => cat.id === idCat ? { ...cat, subActividades: cat.subActividades.filter(s => s.id !== idSub) } : cat));
+    vibrar('ligero');
   };
 
   const cambiarEtapa = (nuevaEtapa: EtapaEvaluacion) => {
@@ -206,6 +247,7 @@ const Tab1: React.FC = () => {
     const actualizada = { ...materiaSeleccionada, etapa: nuevaEtapa, categoriasP2: nuevasCatsP2, categoriasPractico: nuevasCatsPr };
     setMateriaSeleccionada(actualizada);
     actualizarMateria(actualizada);
+    vibrar('ligero');
   };
 
   return (
@@ -253,15 +295,17 @@ const Tab1: React.FC = () => {
               </div>
             </IonCard>
 
+            <p style={{ margin: '0 0 8px 5px', fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Desliza una materia hacia la izquierda para eliminarla</p>
+
             <IonList style={{ background: 'transparent' }}>
               {materiasOrdenadas.map(({ materia, stats }, index) => (
-                <IonCard
-                  key={materia.id}
-                  className="tarjeta-materia"
-                  style={{ animationDelay: `${index * 60}ms`, borderRadius: '14px', marginBottom: '14px', cursor: 'pointer', background: 'var(--ion-card-background)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-                  onClick={() => { setMateriaSeleccionada(materia); setIsDetailOpen(true); }}
-                >
-                  <IonItem lines="none" color="transparent">
+                <IonItemSliding key={materia.id} className="tarjeta-materia" style={{ animationDelay: `${index * 60}ms`, marginBottom: '14px', borderRadius: '14px', overflow: 'hidden' }}>
+                  <IonItem
+                    lines="none"
+                    color="transparent"
+                    onClick={() => { setMateriaSeleccionada(materia); setIsDetailOpen(true); }}
+                    style={{ '--background': 'var(--ion-card-background)', '--padding-start': '14px', '--padding-end': '14px', '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: '14px' } as any}
+                  >
                     <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
                     <IonLabel>
                       <h2 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: '0 0 2px 0' }}>{materia.nombre}</h2>
@@ -271,7 +315,12 @@ const Tab1: React.FC = () => {
                     </IonLabel>
                     <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
                   </IonItem>
-                </IonCard>
+                  <IonItemOptions side="end">
+                    <IonItemOption color="danger" onClick={() => eliminarConConfirmacion(materia, false)}>
+                      <IonIcon icon={trashOutline} slot="icon-only" />
+                    </IonItemOption>
+                  </IonItemOptions>
+                </IonItemSliding>
               ))}
             </IonList>
           </>
@@ -299,6 +348,7 @@ const Tab1: React.FC = () => {
             if (stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada && !celebratedRef.current[materiaSeleccionada.id]) {
               celebratedRef.current[materiaSeleccionada.id] = true;
               confetti({ particleCount: 150, spread: 80, origin: { y: 0.3 }, zIndex: 99999, colors: ['#2dd36f', '#ffea00', '#4c8dff'] });
+              vibrar('exito');
             } else if (stats.acumuladoGlobal < materiaSeleccionada.notaDeseada) {
               celebratedRef.current[materiaSeleccionada.id] = false;
             }
@@ -312,7 +362,8 @@ const Tab1: React.FC = () => {
                       <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.6rem' }}>{materiaSeleccionada.nombre}</h1>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <IonIcon icon={trashOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={confirmarEliminarMateria} />
+                      <IonIcon icon={shareOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={compartirMateria} />
+                      <IonIcon icon={trashOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => eliminarConConfirmacion(materiaSeleccionada, true)} />
                       <IonIcon icon={close} style={{ fontSize: '2rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => setIsDetailOpen(false)} />
                     </div>
                   </div>
@@ -481,7 +532,7 @@ const Tab1: React.FC = () => {
               {iconosDisponibles.map(op => (
                 <button
                   key={op.clave}
-                  onClick={() => setNuevoIcono(op.clave)}
+                  onClick={() => { setNuevoIcono(op.clave); vibrar('ligero'); }}
                   style={{
                     width: '48px', height: '48px', borderRadius: '12px', border: 'none',
                     background: nuevoIcono === op.clave ? 'var(--ion-color-primary)' : 'var(--ion-color-step-100)',
