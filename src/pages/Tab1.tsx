@@ -1,14 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
   IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
-  IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader
+  IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
+  IonSpinner, IonToast, useIonAlert
 } from '@ionic/react';
-import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
 import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala } from '../utils/calculos';
+import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import './Tab1.css';
 
 const CircularProgress = ({ value, color }: { value: number, color: string }) => {
@@ -37,21 +39,101 @@ const CircularProgress = ({ value, color }: { value: number, color: string }) =>
   );
 };
 
+const AvatarMateria = ({ claveIcono, color }: { claveIcono: string, color: string }) => (
+  <div style={{
+    width: '42px', height: '42px', minWidth: '42px', borderRadius: '12px',
+    background: `var(--ion-color-${color})`, display: 'flex', alignItems: 'center',
+    justifyContent: 'center', marginRight: '14px'
+  }}>
+    <IonIcon icon={obtenerIcono(claveIcono)} style={{ fontSize: '1.3rem', color: `var(--ion-color-${color}-contrast)` }} />
+  </div>
+);
+
+const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
+    <div style={{
+      width: '80px', height: '80px', borderRadius: '20px', background: 'var(--ion-color-primary)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', opacity: 0.9
+    }}>
+      <IonIcon icon={schoolOutline} style={{ fontSize: '2.4rem', color: 'var(--ion-color-primary-contrast)' }} />
+    </div>
+    <h2 style={{ fontWeight: '800', fontSize: '1.1rem', margin: '0 0 6px 0', color: 'var(--ion-text-color)' }}>Aún no tienes materias</h2>
+    <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.9rem', margin: '0 0 20px 0', maxWidth: '260px' }}>
+      Crea tu primera materia para empezar a calcular tus notas y saber qué necesitas para aprobar.
+    </p>
+    <IonButton onClick={onCrear} style={{ fontWeight: '700', borderRadius: '10px' }}>
+      <IonIcon icon={add} slot="start" /> Crear materia
+    </IonButton>
+  </div>
+);
+
 const Tab1: React.FC = () => {
-  const { materias, agregarMateria, actualizarMateria } = useMaterias();
+  const { materias, cargando, agregarMateria, actualizarMateria, eliminarMateria } = useMaterias();
   const { escalas } = useEscalas();
+  const [presentAlert] = useIonAlert();
 
   const [isAddMateriaOpen, setIsAddMateriaOpen] = useState(false);
   const [nuevaMateriaNombre, setNuevaMateriaNombre] = useState('');
+  const [nuevoIcono, setNuevoIcono] = useState(iconosDisponibles[0].clave);
   const [materiaSeleccionada, setMateriaSeleccionada] = useState<Materia | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [mostrarToast, setMostrarToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState('');
   const celebratedRef = useRef<Record<string, boolean>>({});
+
+  // Estadísticas de cada materia, calculadas una sola vez por render
+  const materiasConStats = useMemo(() => {
+    return materias.map(m => ({ materia: m, stats: calcularEstadisticas(m) }));
+  }, [materias]);
+
+  // Ordenadas: primero las que más lejos están de su meta (más urgentes)
+  const materiasOrdenadas = useMemo(() => {
+    return [...materiasConStats].sort((a, b) => {
+      const riesgoA = a.materia.notaDeseada - a.stats.acumuladoGlobal;
+      const riesgoB = b.materia.notaDeseada - b.stats.acumuladoGlobal;
+      return riesgoB - riesgoA;
+    });
+  }, [materiasConStats]);
+
+  const promedioGeneral = useMemo(() => {
+    if (materiasConStats.length === 0) return 0;
+    const suma = materiasConStats.reduce((acc, m) => acc + m.stats.acumuladoGlobal, 0);
+    return suma / materiasConStats.length;
+  }, [materiasConStats]);
+
+  const materiasEnRiesgo = useMemo(() => {
+    return materiasConStats.filter(m => m.stats.acumuladoGlobal < m.materia.notaDeseada).length;
+  }, [materiasConStats]);
 
   const handleAgregarMateria = () => {
     if (!nuevaMateriaNombre.trim()) return;
-    agregarMateria(nuevaMateriaNombre);
+    agregarMateria(nuevaMateriaNombre, nuevoIcono);
     setNuevaMateriaNombre('');
+    setNuevoIcono(iconosDisponibles[0].clave);
     setIsAddMateriaOpen(false);
+    setMensajeToast('Materia creada correctamente');
+    setMostrarToast(true);
+  };
+
+  const confirmarEliminarMateria = () => {
+    if (!materiaSeleccionada) return;
+    presentAlert({
+      header: 'Eliminar materia',
+      message: `¿Seguro que quieres eliminar "${materiaSeleccionada.nombre}"? Esta acción no se puede deshacer.`,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Eliminar',
+          role: 'destructive',
+          handler: () => {
+            eliminarMateria(materiaSeleccionada.id);
+            setIsDetailOpen(false);
+            setMensajeToast('Materia eliminada');
+            setMostrarToast(true);
+          }
+        }
+      ]
+    });
   };
 
   const actualizarMateriaActual = (campo: keyof Materia, valor: any) => {
@@ -135,29 +217,78 @@ const Tab1: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding">
-        <IonList style={{ background: 'transparent' }}>
-          {materias.map((materia) => {
-            const stats = calcularEstadisticas(materia);
-            return (
-              <IonCard key={materia.id} onClick={() => { setMateriaSeleccionada(materia); setIsDetailOpen(true); }}
-                style={{ borderRadius: '12px', marginBottom: '16px', cursor: 'pointer', borderTop: `4px solid var(--ion-color-${materia.color})`, background: 'var(--ion-card-background)' }}>
-                <IonItem lines="none" color="transparent">
-                  <IonLabel>
-                    <h2 style={{ fontWeight: '700', fontSize: '1.2rem', color: 'var(--ion-text-color)' }}>{materia.nombre}</h2>
-                    <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem' }}>
-                      {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
-                    </p>
-                  </IonLabel>
-                  <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
-                </IonItem>
-              </IonCard>
-            );
-          })}
-        </IonList>
+
+        {cargando && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px' }}>
+            <IonSpinner name="crescent" style={{ width: '36px', height: '36px', color: 'var(--ion-color-primary)' }} />
+            <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem', marginTop: '12px' }}>Cargando tus materias...</p>
+          </div>
+        )}
+
+        {!cargando && materias.length === 0 && (
+          <EstadoVacio onCrear={() => setIsAddMateriaOpen(true)} />
+        )}
+
+        {!cargando && materias.length > 0 && (
+          <>
+            <IonCard style={{ borderRadius: '16px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+              <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Promedio General</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '1.8rem', fontWeight: '800', color: 'var(--ion-text-color)' }}>{promedioGeneral.toFixed(1)}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {materiasEnRiesgo > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ion-color-danger)' }}>
+                      <IonIcon icon={alertCircleOutline} style={{ fontSize: '1.2rem' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{materiasEnRiesgo} sin meta aún</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ion-color-success)' }}>
+                      <IonIcon icon={trendingUpOutline} style={{ fontSize: '1.2rem' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Todo al día</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </IonCard>
+
+            <IonList style={{ background: 'transparent' }}>
+              {materiasOrdenadas.map(({ materia, stats }, index) => (
+                <IonCard
+                  key={materia.id}
+                  className="tarjeta-materia"
+                  style={{ animationDelay: `${index * 60}ms`, borderRadius: '14px', marginBottom: '14px', cursor: 'pointer', background: 'var(--ion-card-background)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+                  onClick={() => { setMateriaSeleccionada(materia); setIsDetailOpen(true); }}
+                >
+                  <IonItem lines="none" color="transparent">
+                    <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
+                    <IonLabel>
+                      <h2 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: '0 0 2px 0' }}>{materia.nombre}</h2>
+                      <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', margin: 0 }}>
+                        {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
+                      </p>
+                    </IonLabel>
+                    <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
+                  </IonItem>
+                </IonCard>
+              ))}
+            </IonList>
+          </>
+        )}
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '20px', marginRight: '10px' }}>
           <IonFabButton color="primary" onClick={() => setIsAddMateriaOpen(true)}><IonIcon icon={add} /></IonFabButton>
         </IonFab>
+
+        <IonToast
+          isOpen={mostrarToast}
+          message={mensajeToast}
+          duration={1800}
+          position="bottom"
+          color="success"
+          onDidDismiss={() => setMostrarToast(false)}
+        />
 
         <IonModal isOpen={isDetailOpen} onDidDismiss={() => setIsDetailOpen(false)}>
           {materiaSeleccionada && (() => {
@@ -176,8 +307,14 @@ const Tab1: React.FC = () => {
               <IonContent>
                 <div style={{ background: `linear-gradient(135deg, var(--ion-color-${materiaSeleccionada.color}), var(--ion-color-${materiaSeleccionada.color}-shade))`, padding: '30px 20px 20px', color: 'var(--ion-color-primary-contrast)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.8rem' }}>{materiaSeleccionada.nombre}</h1>
-                    <IonIcon icon={close} style={{ fontSize: '2rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => setIsDetailOpen(false)} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <IonIcon icon={obtenerIcono(materiaSeleccionada.icono || 'school')} style={{ fontSize: '1.8rem' }} />
+                      <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.6rem' }}>{materiaSeleccionada.nombre}</h1>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <IonIcon icon={trashOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={confirmarEliminarMateria} />
+                      <IonIcon icon={close} style={{ fontSize: '2rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => setIsDetailOpen(false)} />
+                    </div>
                   </div>
 
                   <div style={{ background: 'var(--ion-card-background)', borderRadius: '12px', padding: '20px', marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
@@ -331,13 +468,31 @@ const Tab1: React.FC = () => {
           })()}
         </IonModal>
 
-        <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.4} breakpoints={[0, 0.4]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
+        <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.55} breakpoints={[0, 0.55]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
           <IonContent className="ion-padding">
             <h2 style={{fontWeight:'800', marginTop:'15px', color: 'var(--ion-text-color)'}}>Nueva Asignatura</h2>
-            <IonItem className="ion-margin-top" color="transparent">
-              <IonLabel position="floating" color="medium">Nombre de la materia</IonLabel>
-              <IonInput value={nuevaMateriaNombre} onIonChange={e => setNuevaMateriaNombre(e.detail.value!)} style={{ fontWeight: '600' }} />
+            <IonItem className="ion-margin-top" color="transparent" lines="full">
+              <IonLabel position="stacked" color="medium">Nombre de la materia</IonLabel>
+              <IonInput value={nuevaMateriaNombre} onIonChange={e => setNuevaMateriaNombre(e.detail.value!)} placeholder="Ej. Cálculo" style={{ fontWeight: '600', marginTop: '6px' }} />
             </IonItem>
+
+            <p style={{ marginTop: '20px', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Elige un ícono</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {iconosDisponibles.map(op => (
+                <button
+                  key={op.clave}
+                  onClick={() => setNuevoIcono(op.clave)}
+                  style={{
+                    width: '48px', height: '48px', borderRadius: '12px', border: 'none',
+                    background: nuevoIcono === op.clave ? 'var(--ion-color-primary)' : 'var(--ion-color-step-100)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <IonIcon icon={op.icono} style={{ fontSize: '1.4rem', color: nuevoIcono === op.clave ? 'var(--ion-color-primary-contrast)' : 'var(--ion-text-color)' }} />
+                </button>
+              ))}
+            </div>
+
             <IonButton expand="block" style={{ marginTop: '30px', borderRadius: '8px', fontWeight: 'bold' }} onClick={handleAgregarMateria}>Crear Asignatura</IonButton>
           </IonContent>
         </IonModal>

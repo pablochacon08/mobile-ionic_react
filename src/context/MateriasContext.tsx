@@ -22,6 +22,7 @@ export interface Materia {
   id: string;
   nombre: string;
   color: string;
+  icono: string; // clave: 'school', 'flask', 'calculator', etc. (ver utils/iconos.ts)
   notaDeseada: number;
   etapa: EtapaEvaluacion;
   pesoTeorico: number;
@@ -40,6 +41,7 @@ const materiaPorDefecto: Materia[] = [
     id: '1',
     nombre: 'Sistemas Digitales',
     color: 'tertiary',
+    icono: 'calculator',
     notaDeseada: 70,
     etapa: 1,
     pesoTeorico: 70,
@@ -64,7 +66,7 @@ interface MateriasContextType {
   cargando: boolean;
   setMaterias: React.Dispatch<React.SetStateAction<Materia[]>>;
   actualizarMateria: (materiaActualizada: Materia) => void;
-  agregarMateria: (nombre: string) => void;
+  agregarMateria: (nombre: string, icono?: string) => void;
   eliminarMateria: (id: string) => void;
 }
 
@@ -74,13 +76,14 @@ export const MateriasProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Cargar datos guardados al abrir la app
   useEffect(() => {
     const cargarDatos = async () => {
       try {
         const { value } = await Preferences.get({ key: STORAGE_KEY });
         if (value) {
-          setMaterias(JSON.parse(value));
+          const cargadas: Materia[] = JSON.parse(value);
+          const migradas = cargadas.map(m => ({ ...m, icono: m.icono || 'school' }));
+          setMaterias(migradas);
         } else {
           setMaterias(materiaPorDefecto);
         }
@@ -94,9 +97,8 @@ export const MateriasProvider: React.FC<{ children: ReactNode }> = ({ children }
     cargarDatos();
   }, []);
 
-  // Guardar automáticamente cada vez que cambian las materias
   useEffect(() => {
-    if (cargando) return; // evita sobreescribir mientras aún carga
+    if (cargando) return;
     const guardarDatos = async () => {
       try {
         await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(materias) });
@@ -111,17 +113,21 @@ export const MateriasProvider: React.FC<{ children: ReactNode }> = ({ children }
     setMaterias(prev => prev.map(m => m.id === materiaActualizada.id ? materiaActualizada : m));
   };
 
-  const agregarMateria = (nombre: string) => {
+  const agregarMateria = (nombre: string, icono: string = 'school') => {
     if (!nombre.trim()) return;
-    const nuevaMateria: Materia = {
-      id: Date.now().toString(),
-      nombre,
-      color: ionicColors[Math.floor(Math.random() * ionicColors.length)],
-      notaDeseada: 70, etapa: 1, pesoTeorico: 70, pesoPractico: 30,
-      categoriasP1: [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }],
-      categoriasP2: [], categoriasPractico: []
-    };
-    setMaterias(prev => [...prev, nuevaMateria]);
+    setMaterias(prev => {
+      const color = ionicColors[prev.length % ionicColors.length];
+      const nuevaMateria: Materia = {
+        id: Date.now().toString(),
+        nombre,
+        color,
+        icono,
+        notaDeseada: 70, etapa: 1, pesoTeorico: 70, pesoPractico: 30,
+        categoriasP1: [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }],
+        categoriasP2: [], categoriasPractico: []
+      };
+      return [...prev, nuevaMateria];
+    });
   };
 
   const eliminarMateria = (id: string) => {
