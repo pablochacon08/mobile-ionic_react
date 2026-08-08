@@ -1,22 +1,56 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
-  IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
+  IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon, IonButtons,
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
-  IonSpinner, IonToast, useIonAlert, useIonRouter, IonItemSliding, IonItemOptions, IonItemOption,
-  IonActionSheet
+  IonSkeletonText, IonToast, useIonAlert, useIonRouter, IonItemSliding, IonItemOptions, IonItemOption,
+  IonActionSheet, IonRefresher, IonRefresherContent
 } from '@ionic/react';
-import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, eyeOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, eyeOutline, informationCircleOutline, statsChartOutline, flameOutline, notifications, notificationsOutline, downloadOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { Share } from '@capacitor/share';
+import { Preferences } from '@capacitor/preferences';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
-import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion, CategoriaPlantilla, HistorialPunto } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
 import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala, generarMensajeAtencion, obtenerProgresoEtapas } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import './Tab1.css';
 
 const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
+
+const COACHMARK_KEY = 'coachmark_dashboard_v1';
+const NOTIFICACIONES_KEY = 'notificaciones_activas';
+const NOTIF_ID = 991;
+
+interface Plantilla {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  categorias: CategoriaPlantilla[];
+}
+
+const PLANTILLAS_EVALUACION: Plantilla[] = [
+  { id: 'dos-examenes', nombre: '2 Exámenes', descripcion: '50% y 50%', categorias: [{ nombre: 'Examen 1', peso: 50 }, { nombre: 'Examen 2', peso: 50 }] },
+  { id: 'tareas-examen', nombre: 'Tareas + Examen', descripcion: '30% Tareas, 70% Examen', categorias: [{ nombre: 'Tareas', peso: 30 }, { nombre: 'Examen', peso: 70 }] },
+  { id: 'personalizado', nombre: 'Personalizado', descripcion: 'Empezar desde cero', categorias: [] },
+];
+
+// Fondos degradados por nivel de riesgo, para dar sensación de "estado" a simple vista
+const FONDO_POR_RIESGO: Record<string, string> = {
+  success: 'linear-gradient(135deg, var(--ion-card-background) 55%, rgba(45,211,111,0.10))',
+  warning: 'linear-gradient(135deg, var(--ion-card-background) 55%, rgba(255,196,9,0.12))',
+  danger: 'linear-gradient(135deg, var(--ion-card-background) 55%, rgba(235,68,90,0.13))',
+  medium: 'var(--ion-card-background)',
+};
+
+const FONDO_PROMEDIO_POR_RIESGO: Record<string, string> = {
+  success: 'linear-gradient(135deg, rgba(45,211,111,0.16), rgba(45,211,111,0.02) 70%)',
+  warning: 'linear-gradient(135deg, rgba(255,196,9,0.18), rgba(255,196,9,0.02) 70%)',
+  danger: 'linear-gradient(135deg, rgba(235,68,90,0.18), rgba(235,68,90,0.02) 70%)',
+  medium: 'var(--ion-card-background)',
+};
 
 const vibrar = async (tipo: 'ligero' | 'medio' | 'exito') => {
   try {
@@ -26,6 +60,13 @@ const vibrar = async (tipo: 'ligero' | 'medio' | 'exito') => {
   } catch (error) {
     // Silencioso: en navegador de escritorio simplemente no vibra
   }
+};
+
+// Color de riesgo según qué tan lejos está la materia de su meta
+const colorPorRiesgo = (diferencia: number): string => {
+  if (diferencia <= 0) return 'success';
+  if (diferencia <= 10) return 'warning';
+  return 'danger';
 };
 
 const CircularProgress = ({ value, color }: { value: number, color: string }) => {
@@ -58,7 +99,7 @@ const AvatarMateria = ({ claveIcono, color }: { claveIcono: string, color: strin
   <div style={{
     width: '42px', height: '42px', minWidth: '42px', borderRadius: '12px',
     background: `var(--ion-color-${color})`, display: 'flex', alignItems: 'center',
-    justifyContent: 'center', marginRight: '14px'
+    justifyContent: 'center', marginRight: '14px', transition: 'background 0.3s ease'
   }}>
     <IonIcon icon={obtenerIcono(claveIcono)} style={{ fontSize: '1.3rem', color: `var(--ion-color-${color}-contrast)` }} />
   </div>
@@ -80,7 +121,8 @@ const ProgresoEtapas = ({ etapa }: { etapa: EtapaEvaluacion }) => {
           fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px',
           background: `var(--ion-color-${colorPorEstado[p.estado]})`,
           color: `var(--ion-color-${colorPorEstado[p.estado]}-contrast)`,
-          opacity: p.estado === 'pendiente' ? 0.45 : 1
+          opacity: p.estado === 'pendiente' ? 0.45 : 1,
+          transition: 'opacity 0.3s ease, background 0.3s ease'
         }}>
           {p.label}
         </span>
@@ -88,6 +130,58 @@ const ProgresoEtapas = ({ etapa }: { etapa: EtapaEvaluacion }) => {
     </div>
   );
 };
+
+const Sparkline = ({ datos, color }: { datos: HistorialPunto[], color: string }) => {
+  if (datos.length < 2) {
+    return (
+      <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)', margin: '4px 0 0' }}>
+        Aún no hay suficiente historial para mostrar una tendencia. Vuelve luego de actualizar tus notas otro día.
+      </p>
+    );
+  }
+
+  const width = 280;
+  const height = 50;
+  const valores = datos.map(d => d.valor);
+  const min = Math.min(...valores, 0);
+  const max = Math.max(...valores, 100);
+  const rango = max - min || 1;
+
+  const puntos = datos.map((d, i) => {
+    const x = (i / (datos.length - 1)) * width;
+    const y = height - ((d.valor - min) / rango) * height;
+    return `${x},${y}`;
+  });
+
+  const ultimo = datos[datos.length - 1];
+  const [ultimoX, ultimoY] = puntos[puntos.length - 1].split(',').map(Number);
+
+  return (
+    <div>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
+        <polyline points={puntos.join(' ')} fill="none" stroke={`var(--ion-color-${color})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={ultimoX} cy={ultimoY} r="4" fill={`var(--ion-color-${color})`} />
+      </svg>
+      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--ion-color-medium)' }}>
+        Último registro: {new Date(ultimo.fecha).toLocaleDateString()} • {ultimo.valor.toFixed(1)}
+      </p>
+    </div>
+  );
+};
+
+const TarjetaEsqueleto = () => (
+  <div style={{
+    display: 'flex', alignItems: 'center', padding: '14px', borderRadius: '14px',
+    background: 'var(--ion-card-background)', marginBottom: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+  }}>
+    <IonSkeletonText animated style={{ width: '42px', height: '42px', borderRadius: '12px', marginRight: '14px', flexShrink: 0 }} />
+    <div style={{ flex: 1 }}>
+      <IonSkeletonText animated style={{ width: '55%', height: '14px', marginBottom: '8px' }} />
+      <IonSkeletonText animated style={{ width: '35%', height: '10px' }} />
+    </div>
+    <IonSkeletonText animated style={{ width: '50px', height: '50px', borderRadius: '50%', flexShrink: 0 }} />
+  </div>
+);
 
 const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
@@ -158,7 +252,7 @@ const CampoNota: React.FC<CampoNotaProps> = ({ value, onChange, max = 100, min =
 };
 
 const Tab1: React.FC = () => {
-  const { materias, cargando, agregarMateria, actualizarMateria, eliminarMateria, restaurarMateria } = useMaterias();
+  const { materias, cargando, rachaDias, agregarMateria, actualizarMateria, eliminarMateria, restaurarMateria, recargarMaterias } = useMaterias();
   const { escalas } = useEscalas();
   const [presentAlert] = useIonAlert();
   const router = useIonRouter();
@@ -166,6 +260,7 @@ const Tab1: React.FC = () => {
   const [isAddMateriaOpen, setIsAddMateriaOpen] = useState(false);
   const [nuevaMateriaNombre, setNuevaMateriaNombre] = useState('');
   const [nuevoIcono, setNuevoIcono] = useState(iconosDisponibles[0].clave);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string>('dos-examenes');
   const [materiaSeleccionada, setMateriaSeleccionada] = useState<Materia | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [mostrarToast, setMostrarToast] = useState(false);
@@ -178,11 +273,77 @@ const Tab1: React.FC = () => {
   const [mostrarSelectorNota, setMostrarSelectorNota] = useState(false);
   const [ultimaEliminada, setUltimaEliminada] = useState<Materia | null>(null);
   const [mostrarToastUndo, setMostrarToastUndo] = useState(false);
+  const [mostrarCoachmark, setMostrarCoachmark] = useState(false);
+  const [swipeRatios, setSwipeRatios] = useState<Record<string, number>>({});
+  const [notificacionesActivas, setNotificacionesActivas] = useState(false);
   const celebratedRef = useRef<Record<string, boolean>>({});
   const slidingRefs = useRef<Record<string, any>>({});
   const inputRefs = useRef<Record<string, any>>({});
   const longPressTimer = useRef<any>(null);
   const longPressActivado = useRef(false);
+
+  useEffect(() => {
+    if (cargando || materias.length === 0) return;
+    Preferences.get({ key: COACHMARK_KEY }).then(({ value }) => {
+      if (!value) setMostrarCoachmark(true);
+    });
+  }, [cargando, materias.length]);
+
+  useEffect(() => {
+    Preferences.get({ key: NOTIFICACIONES_KEY }).then(({ value }) => setNotificacionesActivas(value === '1'));
+  }, []);
+
+  const cerrarCoachmark = () => {
+    setMostrarCoachmark(false);
+    Preferences.set({ key: COACHMARK_KEY, value: '1' });
+  };
+
+  const handleRefresh = async (event: CustomEvent) => {
+    await recargarMaterias();
+    vibrar('ligero');
+    (event.target as HTMLIonRefresherElement).complete();
+  };
+
+  const alternarNotificaciones = async () => {
+    if (notificacionesActivas) {
+      try {
+        await LocalNotifications.cancel({ notifications: [{ id: NOTIF_ID }] });
+      } catch (error) {
+        console.log('No se pudo cancelar la notificación:', error);
+      }
+      await Preferences.set({ key: NOTIFICACIONES_KEY, value: '0' });
+      setNotificacionesActivas(false);
+      setMensajeToast('Recordatorios desactivados');
+      setMostrarToast(true);
+      return;
+    }
+
+    try {
+      const permiso = await LocalNotifications.requestPermissions();
+      if (permiso.display !== 'granted') {
+        setMensajeToast('Necesitas dar permiso de notificaciones');
+        setMostrarToast(true);
+        return;
+      }
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: NOTIF_ID,
+          title: 'Registra tus notas 📚',
+          body: 'Actualiza tus calificaciones de la semana para saber si vas bien.',
+          schedule: { on: { weekday: 1, hour: 18, minute: 0 }, allowWhileIdle: true },
+        }]
+      });
+      await Preferences.set({ key: NOTIFICACIONES_KEY, value: '1' });
+      setNotificacionesActivas(true);
+      vibrar('ligero');
+      setMensajeToast('Te recordaremos cada lunes a las 6pm');
+      setMostrarToast(true);
+    } catch (error) {
+      console.log('No se pudo programar la notificación:', error);
+      setMensajeToast('No se pudo activar el recordatorio en este dispositivo');
+      setMostrarToast(true);
+    }
+  };
 
   const cerrarTodosSliding = () => {
     Object.values(slidingRefs.current).forEach((ref: any) => {
@@ -212,6 +373,11 @@ const Tab1: React.FC = () => {
     abrirDetalleMateria(materia);
   };
 
+  const manejarDragSwipe = (id: string, event: CustomEvent) => {
+    const ratio = event.detail?.ratio ?? 0;
+    setSwipeRatios(prev => ({ ...prev, [id]: Math.min(Math.abs(ratio), 1) }));
+  };
+
   const materiasConStats = useMemo(() => {
     return materias.map(m => ({ materia: m, stats: calcularEstadisticas(m) }));
   }, [materias]);
@@ -234,6 +400,14 @@ const Tab1: React.FC = () => {
     return materiasConStats.filter(m => m.stats.acumuladoGlobal < m.materia.notaDeseada).length;
   }, [materiasConStats]);
 
+  const colorPromedioGeneral = useMemo(() => {
+    if (materiasConStats.length === 0) return 'medium';
+    const ratioRiesgo = materiasEnRiesgo / materiasConStats.length;
+    if (materiasEnRiesgo === 0) return 'success';
+    if (ratioRiesgo < 0.5) return 'warning';
+    return 'danger';
+  }, [materiasEnRiesgo, materiasConStats.length]);
+
   const materiaPrioritaria = materiasOrdenadas[0];
   const mensajeAtencion = materiaPrioritaria
     ? generarMensajeAtencion(materiaPrioritaria.materia, materiaPrioritaria.stats)
@@ -241,9 +415,11 @@ const Tab1: React.FC = () => {
 
   const handleAgregarMateria = () => {
     if (!nuevaMateriaNombre.trim()) return;
-    agregarMateria(nuevaMateriaNombre, nuevoIcono);
+    const plantilla = PLANTILLAS_EVALUACION.find(p => p.id === plantillaSeleccionada);
+    agregarMateria(nuevaMateriaNombre, nuevoIcono, plantilla?.categorias);
     setNuevaMateriaNombre('');
     setNuevoIcono(iconosDisponibles[0].clave);
+    setPlantillaSeleccionada('dos-examenes');
     setIsAddMateriaOpen(false);
     setMensajeToast('Materia creada correctamente');
     setMostrarToast(true);
@@ -331,6 +507,26 @@ const Tab1: React.FC = () => {
         title: materia.nombre,
         text: lineas.join('\n')
       });
+    } catch (error) {
+      console.log('Compartir cancelado o no disponible:', error);
+    }
+  };
+
+  const compartirResumenGeneral = async () => {
+    if (materias.length === 0) return;
+    const lineas = [
+      '📊 Resumen académico',
+      `Promedio general: ${promedioGeneral.toFixed(1)}`,
+      ''
+    ];
+    materiasOrdenadas.forEach(({ materia, stats }) => {
+      const estado = stats.acumuladoGlobal >= materia.notaDeseada ? '✅' : '⚠️';
+      lineas.push(`${estado} ${materia.nombre}: ${stats.acumuladoGlobal.toFixed(1)} (meta ${materia.notaDeseada})`);
+    });
+    lineas.push('', 'Generado con Mis Calificaciones');
+
+    try {
+      await Share.share({ title: 'Mi resumen académico', text: lineas.join('\n') });
     } catch (error) {
       console.log('Compartir cancelado o no disponible:', error);
     }
@@ -429,16 +625,29 @@ const Tab1: React.FC = () => {
       <IonHeader className="ion-no-border">
         <IonToolbar>
           <IonTitle style={{ fontWeight: '800' }}>Mis Calificaciones</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={compartirResumenGeneral} title="Exportar resumen">
+              <IonIcon icon={downloadOutline} />
+            </IonButton>
+            <IonButton onClick={alternarNotificaciones} title="Recordatorios">
+              <IonIcon icon={notificacionesActivas ? notifications : notificationsOutline} />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding">
 
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
+
         {cargando && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px' }}>
-            <IonSpinner name="crescent" style={{ width: '36px', height: '36px', color: 'var(--ion-color-primary)' }} />
-            <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem', marginTop: '12px' }}>Cargando tus materias...</p>
-          </div>
+          <>
+            <TarjetaEsqueleto />
+            <TarjetaEsqueleto />
+            <TarjetaEsqueleto />
+          </>
         )}
 
         {!cargando && materias.length === 0 && (
@@ -447,13 +656,22 @@ const Tab1: React.FC = () => {
 
         {!cargando && materias.length > 0 && (
           <>
+            {rachaDias > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                <IonIcon icon={flameOutline} style={{ fontSize: '1rem', color: 'var(--ion-color-warning-shade)' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--ion-color-warning-shade)' }}>
+                  {rachaDias} días seguidos actualizando tus notas
+                </span>
+              </div>
+            )}
+
             {mensajeAtencion && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
-                borderRadius: '12px', marginBottom: '14px',
-                background: mensajeAtencion.tipo === 'exito' ? 'rgba(45,211,111,0.12)'
-                          : mensajeAtencion.tipo === 'peligro' ? 'rgba(235,68,90,0.12)'
-                          : 'rgba(255,196,9,0.12)',
+                borderRadius: '12px', marginBottom: '14px', transition: 'background 0.3s ease, color 0.3s ease',
+                background: mensajeAtencion.tipo === 'exito' ? 'linear-gradient(135deg, rgba(45,211,111,0.16), rgba(45,211,111,0.04))'
+                          : mensajeAtencion.tipo === 'peligro' ? 'linear-gradient(135deg, rgba(235,68,90,0.16), rgba(235,68,90,0.04))'
+                          : 'linear-gradient(135deg, rgba(255,196,9,0.18), rgba(255,196,9,0.04))',
                 color: mensajeAtencion.tipo === 'exito' ? 'var(--ion-color-success)'
                      : mensajeAtencion.tipo === 'peligro' ? 'var(--ion-color-danger)'
                      : 'var(--ion-color-warning-shade)'
@@ -463,7 +681,10 @@ const Tab1: React.FC = () => {
               </div>
             )}
 
-            <IonCard style={{ borderRadius: '16px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+            <IonCard style={{
+              borderRadius: '16px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+              background: FONDO_PROMEDIO_POR_RIESGO[colorPromedioGeneral], transition: 'background 0.5s ease'
+            }}>
               <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Promedio General</p>
@@ -485,48 +706,80 @@ const Tab1: React.FC = () => {
               </div>
             </IonCard>
 
-            <p style={{ margin: '0 0 8px 5px', fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Desliza para eliminar, o mantén presionada para más opciones</p>
+            {mostrarCoachmark && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'var(--ion-color-primary)',
+                color: 'var(--ion-color-primary-contrast)', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}>
+                <IonIcon icon={informationCircleOutline} style={{ fontSize: '1.3rem', marginTop: '2px', flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', lineHeight: '1.35', flex: 1 }}>
+                  Tip: desliza una materia hacia la izquierda para eliminarla, o mantenla presionada para ver más opciones.
+                </p>
+                <IonIcon icon={close} style={{ fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, opacity: 0.85 }} onClick={cerrarCoachmark} />
+              </div>
+            )}
 
             <IonList style={{ background: 'transparent' }}>
-              {materiasOrdenadas.map(({ materia, stats }, index) => (
-                <IonItemSliding
-                  key={materia.id}
-                  ref={el => { slidingRefs.current[materia.id] = el; }}
-                  className="tarjeta-materia"
-                  style={{ animationDelay: `${index * 60}ms`, marginBottom: '14px', borderRadius: '14px', overflow: 'hidden' }}
-                >
-                  <IonItem
-                    lines="none"
-                    color="transparent"
-                    onClick={() => manejarClickMateria(materia)}
-                    onPointerDown={() => iniciarPresionLarga(materia)}
-                    onPointerUp={cancelarPresionLarga}
-                    onPointerLeave={cancelarPresionLarga}
-                    style={{ '--background': 'var(--ion-card-background)', '--padding-start': '14px', '--padding-end': '14px', '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: '14px' } as any}
+              {materiasOrdenadas.map(({ materia, stats }, index) => {
+                const diferencia = materia.notaDeseada - stats.acumuladoGlobal;
+                const colorRiesgo = colorPorRiesgo(diferencia);
+                const ratioSwipe = swipeRatios[materia.id] ?? 0;
+
+                return (
+                  <IonItemSliding
+                    key={materia.id}
+                    ref={el => { slidingRefs.current[materia.id] = el; }}
+                    className="tarjeta-materia"
+                    style={{ animationDelay: `${index * 60}ms`, marginBottom: '14px', borderRadius: '14px', overflow: 'hidden' }}
+                    onIonDrag={e => manejarDragSwipe(materia.id, e as CustomEvent)}
                   >
-                    <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
-                    <IonLabel>
-                      <h2 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: '0 0 2px 0' }}>{materia.nombre}</h2>
-                      <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', margin: 0 }}>
-                        {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
-                      </p>
-                      <ProgresoEtapas etapa={materia.etapa} />
-                    </IonLabel>
-                    <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
-                  </IonItem>
-                  <IonItemOptions side="end">
-                    <IonItemOption color="danger" onClick={() => solicitarEliminarDesdeSwipe(materia)}>
-                      <IonIcon icon={trashOutline} slot="icon-only" />
-                    </IonItemOption>
-                  </IonItemOptions>
-                </IonItemSliding>
-              ))}
+                    <IonItem
+                      lines="none"
+                      color="transparent"
+                      onClick={() => manejarClickMateria(materia)}
+                      onPointerDown={() => iniciarPresionLarga(materia)}
+                      onPointerUp={cancelarPresionLarga}
+                      onPointerLeave={cancelarPresionLarga}
+                      style={{
+                        '--background': FONDO_POR_RIESGO[colorRiesgo], '--padding-start': '14px', '--padding-end': '14px',
+                        '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        borderRadius: '14px', borderLeft: `4px solid var(--ion-color-${colorRiesgo})`,
+                        transition: 'border-color 0.4s ease, background 0.5s ease'
+                      } as any}
+                    >
+                      <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
+                      <IonLabel>
+                        <h2 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: '0 0 2px 0' }}>{materia.nombre}</h2>
+                        <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', margin: 0 }}>
+                          {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
+                        </p>
+                        <ProgresoEtapas etapa={materia.etapa} />
+                      </IonLabel>
+                      <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
+                    </IonItem>
+                    <IonItemOptions side="end" onIonSwipe={() => solicitarEliminarDesdeSwipe(materia)}>
+                      <IonItemOption color="danger" expandable onClick={() => solicitarEliminarDesdeSwipe(materia)}>
+                        <IonIcon
+                          icon={trashOutline}
+                          slot="icon-only"
+                          style={{
+                            transform: `scale(${0.75 + ratioSwipe * 0.45})`,
+                            opacity: 0.55 + ratioSwipe * 0.45,
+                            transition: 'transform 0.05s linear, opacity 0.05s linear'
+                          }}
+                        />
+                      </IonItemOption>
+                    </IonItemOptions>
+                  </IonItemSliding>
+                );
+              })}
             </IonList>
           </>
         )}
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '20px', marginRight: '10px' }}>
-          <IonFabButton color="primary" onClick={() => { cerrarTodosSliding(); setMostrarAccionesFab(true); }}><IonIcon icon={add} /></IonFabButton>
+          <IonFabButton color="primary" onClick={() => { vibrar('ligero'); cerrarTodosSliding(); setMostrarAccionesFab(true); }}><IonIcon icon={add} /></IonFabButton>
         </IonFab>
 
         <IonActionSheet
@@ -554,7 +807,7 @@ const Tab1: React.FC = () => {
         <IonToast
           isOpen={mostrarToast}
           message={mensajeToast}
-          duration={1800}
+          duration={2400}
           position="bottom"
           color="success"
           onDidDismiss={() => setMostrarToast(false)}
@@ -652,6 +905,15 @@ const Tab1: React.FC = () => {
                 </div>
 
                 <div className="ion-padding">
+                  <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-color-step-50)', boxShadow: 'none' }}>
+                    <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-100)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <IonIcon icon={statsChartOutline} style={{ fontSize: '0.9rem' }} /> TENDENCIA
+                    </div>
+                    <div style={{ padding: '14px 15px' }}>
+                      <Sparkline datos={materiaSeleccionada.historial ?? []} color={materiaSeleccionada.color} />
+                    </div>
+                  </IonCard>
+
                   <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-color-step-50)', boxShadow: 'none' }}>
                     <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-100)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px' }}>
                       PONDERACIÓN GLOBAL
@@ -856,13 +1118,32 @@ const Tab1: React.FC = () => {
           </IonContent>
         </IonModal>
 
-        <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.55} breakpoints={[0, 0.55]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
+        <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.75} breakpoints={[0, 0.75]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
           <IonContent className="ion-padding">
             <h2 style={{fontWeight:'800', marginTop:'15px', color: 'var(--ion-text-color)'}}>Nueva Asignatura</h2>
             <IonItem className="ion-margin-top" color="transparent" lines="full">
               <IonLabel position="stacked" color="medium">Nombre de la materia</IonLabel>
               <IonInput value={nuevaMateriaNombre} onIonChange={e => setNuevaMateriaNombre(e.detail.value!)} placeholder="Ej. Cálculo" style={{ fontWeight: '600', marginTop: '6px' }} />
             </IonItem>
+
+            <p style={{ marginTop: '20px', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>¿Cómo se evalúa?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {PLANTILLAS_EVALUACION.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { setPlantillaSeleccionada(p.id); vibrar('ligero'); }}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left',
+                    padding: '10px 14px', borderRadius: '10px',
+                    border: plantillaSeleccionada === p.id ? '2px solid var(--ion-color-primary)' : '2px solid transparent',
+                    background: 'var(--ion-color-step-100)', cursor: 'pointer'
+                  }}
+                >
+                  <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--ion-text-color)' }}>{p.nombre}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>{p.descripcion}</span>
+                </button>
+              ))}
+            </div>
 
             <p style={{ marginTop: '20px', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Elige un ícono</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
