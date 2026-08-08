@@ -939,10 +939,16 @@ const Tab1: React.FC = () => {
                       return (
                         <IonAccordion key={cat.id} value={cat.id} style={{ background: 'var(--ion-card-background)', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                           <IonItem slot="header" color="transparent" lines="none">
-                            <IonLabel>
-                              <h3 style={{ fontWeight: '700', fontSize: '0.95rem' }}>{cat.nombre}</h3>
-                              {tieneSubs && <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>{cat.subActividades.length} actividades • Promedio: {notaCalculada.toFixed(1)}/100</p>}
-                            </IonLabel>
+                            {/* ENVOLVEMOS EL LABEL Y EL INPUT PARA DETENER EL CLIC */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+                              <IonInput 
+                                value={cat.nombre} 
+                                onIonChange={e => actualizarCategoria(cat.id, 'nombre', e.detail.value!)} 
+                                style={{ fontWeight: '700', fontSize: '0.95rem', '--padding-start': '0', '--padding-end': '0' }} 
+                                placeholder="Nombre de actividad..."
+                              />
+                              {tieneSubs && <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>{cat.subActividades.length} actividades • Promedio: {notaCalculada.toFixed(1)}/100</p>}
+                            </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '10px' }} onClick={e => e.stopPropagation()}>
                               <div style={{ textAlign: 'center' }}>
@@ -968,18 +974,23 @@ const Tab1: React.FC = () => {
                           </IonItem>
 
                           <div slot="content" style={{ padding: '0 15px 15px 15px' }}>
-                            <div style={{ background: 'var(--ion-color-step-50)', borderRadius: '8px', padding: '10px' }}>
+                            <div style={{ background: 'transparent', padding: '0 5px' }}>
 
                               <IonListHeader style={{ padding: 0, minHeight: 'auto', marginBottom: '10px' }}>
-                                <IonLabel style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--ion-color-medium)', margin: 0 }}>Notas individuales de esta actividad</IonLabel>
+                                <IonLabel style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--ion-color-medium)', margin: 0, letterSpacing: '0.5px' }}>Notas individuales de esta actividad</IonLabel>
                               </IonListHeader>
 
                               {cat.subActividades.map((sub, index) => (
-                                <IonItem key={sub.id} lines="none" style={{ '--min-height': '35px', '--background': 'transparent' }}>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)', marginRight: '10px' }}>#{index + 1}</span>
-                                  <IonInput value={sub.nombre} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'nombre', e.detail.value!)} style={{ fontSize: '0.9rem' }} placeholder="Nombre" />
+                                <IonItem key={sub.id} lines="none" style={{ '--min-height': '40px', '--background': 'transparent', '--padding-start': '0' }}>
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--ion-color-medium)', marginRight: '12px', fontWeight: 'bold' }}>#{index + 1}</span>
+                                  <IonInput 
+                                    value={sub.nombre} 
+                                    onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'nombre', e.detail.value!)} 
+                                    style={{ fontSize: '1rem', fontWeight: '700', '--padding-start': '0' }} 
+                                    placeholder="Nombre" 
+                                  />
 
-                                  <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <CampoNota
                                       campoId={`obtenida-${sub.id}`}
                                       siguienteId={`maxima-${sub.id}`}
@@ -988,9 +999,9 @@ const Tab1: React.FC = () => {
                                       min={0}
                                       max={sub.notaMaxima || 0}
                                       onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaObtenida', v)}
-                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-card-background)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }}
+                                      style={{ width: '42px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})`, padding: '6px 0' }}
                                     />
-                                    <span style={{ color: 'var(--ion-color-medium)' }}>/</span>
+                                    <span style={{ color: 'var(--ion-color-medium)', fontWeight: 'bold' }}>/</span>
                                     <CampoNota
                                       campoId={`maxima-${sub.id}`}
                                       siguienteId={cat.subActividades[index + 1] ? `obtenida-${cat.subActividades[index + 1].id}` : undefined}
@@ -1000,15 +1011,15 @@ const Tab1: React.FC = () => {
                                       min={0}
                                       max={9999}
                                       onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaMaxima', v)}
-                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-card-background)', borderRadius: '4px', fontSize: '0.9rem' }}
+                                      style={{ width: '42px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontSize: '0.95rem', fontWeight: '700', padding: '6px 0' }}
                                     />
-                                    <IonIcon icon={trashOutline} color="danger" style={{ cursor: 'pointer', fontSize: '1.1rem', marginLeft: '5px', opacity: 0.6 }} onClick={() => eliminarSubActividad(cat.id, sub.id)} />
+                                    <IonIcon icon={trashOutline} color="danger" style={{ cursor: 'pointer', fontSize: '1.2rem', marginLeft: '8px', opacity: 0.7 }} onClick={() => eliminarSubActividad(cat.id, sub.id)} />
                                   </div>
                                 </IonItem>
                               ))}
 
-                              <IonButton expand="block" fill="clear" size="small" onClick={() => agregarSubActividad(cat.id)} style={{ marginTop: '10px', fontSize: '0.8rem' }}>
-                                + Agregar Actividad a {cat.nombre}
+                              <IonButton expand="block" fill="clear" size="small" onClick={() => agregarSubActividad(cat.id)} style={{ marginTop: '12px', fontSize: '0.8rem', fontWeight: '700', letterSpacing: '0.5px' }}>
+                                + AGREGAR ACTIVIDAD A {cat.nombre.toUpperCase()}
                               </IonButton>
                             </div>
                           </div>
