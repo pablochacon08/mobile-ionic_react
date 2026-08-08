@@ -43,7 +43,7 @@ export interface CategoriaPlantilla {
   peso: number;
 }
 
-export const ionicColors = ['primary', 'secondary', 'tertiary', 'success', 'warning'];
+export const ionicColors = ['azul', 'verde', 'morado', 'ambar', 'rosa'];
 
 const STORAGE_KEY = 'materias';
 const RACHA_CONTEO_KEY = 'racha_conteo';
@@ -56,7 +56,7 @@ const materiaPorDefecto: Materia[] = [
   {
     id: '1',
     nombre: 'Sistemas Digitales',
-    color: 'tertiary',
+    color: 'morado',
     icono: 'calculator',
     notaDeseada: 70,
     etapa: 1,
@@ -217,7 +217,7 @@ export const MateriasProvider: React.FC<{ children: ReactNode }> = ({ children }
           notaGlobalRapida: 0,
           subActividades: []
         }))
-      : [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }];
+      : [{ id: 'c1', nombre: 'Actividad 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }];
 
     const nuevaMateria: Materia = {
       id: Date.now().toString(),

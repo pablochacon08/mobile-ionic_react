@@ -1,2 +1,245 @@
 /* For information on how to create your own theme, please refer to:
 http://ionicframework.com/docs/theming/ */
+
+/* ============================================
+   MODO CLARO
+   ============================================ */
+:root {
+  /* --- Acento principal (botones, links, elementos activos) --- */
+  --ion-color-primary: #3e63dd;
+  --ion-color-primary-rgb: 62, 99, 221;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #3658c2;
+  --ion-color-primary-tint: #5878e1;
+
+  /* --- Secundario: gris neutro para elementos de menor jerarquía --- */
+  --ion-color-secondary: #64748b;
+  --ion-color-secondary-rgb: 100, 116, 139;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #58687d;
+  --ion-color-secondary-tint: #7b8ca0;
+
+  /* --- Terciario: violeta suave de apoyo --- */
+  --ion-color-tertiary: #7c3aed;
+  --ion-color-tertiary-rgb: 124, 58, 237;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #6d33d1;
+  --ion-color-tertiary-tint: #9159f0;
+
+  /* --- Success / Warning / Danger: reservados SOLO para estado (riesgo, aprobado, error) --- */
+  --ion-color-success: #3ca66b;
+  --ion-color-success-rgb: 60, 166, 107;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #348f5d;
+  --ion-color-success-tint: #57b583;
+
+  --ion-color-warning: #d9a404;
+  --ion-color-warning-rgb: 217, 164, 4;
+  --ion-color-warning-contrast: #1c1c1c;
+  --ion-color-warning-contrast-rgb: 28, 28, 28;
+  --ion-color-warning-shade: #b98903;
+  --ion-color-warning-tint: #e6b733;
+
+  --ion-color-danger: #d64550;
+  --ion-color-danger-rgb: 214, 69, 80;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #b93a44;
+  --ion-color-danger-tint: #de6570;
+
+  --ion-color-dark: #1c1c1e;
+  --ion-color-dark-rgb: 28, 28, 30;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #19191a;
+  --ion-color-dark-tint: #333335;
+
+  --ion-color-medium: #8a8a8e;
+  --ion-color-medium-rgb: 138, 138, 142;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #79797c;
+  --ion-color-medium-tint: #969699;
+
+  --ion-color-light: #f7f7f8;
+  --ion-color-light-rgb: 247, 247, 248;
+  --ion-color-light-contrast: #1c1c1e;
+  --ion-color-light-contrast-rgb: 28, 28, 30;
+  --ion-color-light-shade: #d9d9da;
+  --ion-color-light-tint: #f8f8f9;
+
+  /* ============================================
+     Colores de IDENTIDAD para materias
+     (separados a propósito de success/warning/danger
+     para que nunca se confundan con el color de riesgo)
+     ============================================ */
+  --ion-color-azul: #3e63dd;
+  --ion-color-azul-rgb: 62, 99, 221;
+  --ion-color-azul-contrast: #ffffff;
+  --ion-color-azul-contrast-rgb: 255, 255, 255;
+  --ion-color-azul-shade: #3658c2;
+  --ion-color-azul-tint: #5878e1;
+
+  --ion-color-verde: #0d9488;
+  --ion-color-verde-rgb: 13, 148, 136;
+  --ion-color-verde-contrast: #ffffff;
+  --ion-color-verde-contrast-rgb: 255, 255, 255;
+  --ion-color-verde-shade: #0b8177;
+  --ion-color-verde-tint: #33a79c;
+
+  --ion-color-morado: #7c3aed;
+  --ion-color-morado-rgb: 124, 58, 237;
+  --ion-color-morado-contrast: #ffffff;
+  --ion-color-morado-contrast-rgb: 255, 255, 255;
+  --ion-color-morado-shade: #6d33d1;
+  --ion-color-morado-tint: #9159f0;
+
+  --ion-color-ambar: #ea8c2e;
+  --ion-color-ambar-rgb: 234, 140, 46;
+  --ion-color-ambar-contrast: #ffffff;
+  --ion-color-ambar-contrast-rgb: 255, 255, 255;
+  --ion-color-ambar-shade: #ce7a28;
+  --ion-color-ambar-tint: #ed9f4e;
+
+  --ion-color-rosa: #db2777;
+  --ion-color-rosa-rgb: 219, 39, 119;
+  --ion-color-rosa-contrast: #ffffff;
+  --ion-color-rosa-contrast-rgb: 255, 255, 255;
+  --ion-color-rosa-shade: #c12268;
+  --ion-color-rosa-tint: #e14589;
+}
+
+/* ============================================
+   MODO OSCURO
+   Se activa agregando la clase .ion-palette-dark al <html>
+   (ya lo tienes importado en App.tsx vía palettes/dark.class.css)
+   ============================================ */
+.ion-palette-dark {
+  --ion-color-primary: #5878e1;
+  --ion-color-primary-rgb: 88, 120, 225;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #3e63dd;
+  --ion-color-primary-tint: #7391e8;
+
+  --ion-color-secondary: #94a3b8;
+  --ion-color-secondary-rgb: 148, 163, 184;
+  --ion-color-secondary-contrast: #1c1c1e;
+  --ion-color-secondary-contrast-rgb: 28, 28, 30;
+  --ion-color-secondary-shade: #64748b;
+  --ion-color-secondary-tint: #a8b4c5;
+
+  --ion-color-tertiary: #9159f0;
+  --ion-color-tertiary-rgb: 145, 89, 240;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #7c3aed;
+  --ion-color-tertiary-tint: #a578f2;
+
+  --ion-color-success: #57b583;
+  --ion-color-success-rgb: 87, 181, 131;
+  --ion-color-success-contrast: #0d1f16;
+  --ion-color-success-contrast-rgb: 13, 31, 22;
+  --ion-color-success-shade: #3ca66b;
+  --ion-color-success-tint: #78c49b;
+
+  --ion-color-warning: #e6b733;
+  --ion-color-warning-rgb: 230, 183, 51;
+  --ion-color-warning-contrast: #1c1c1c;
+  --ion-color-warning-contrast-rgb: 28, 28, 28;
+  --ion-color-warning-shade: #d9a404;
+  --ion-color-warning-tint: #ecc65a;
+
+  --ion-color-danger: #e3707a;
+  --ion-color-danger-rgb: 227, 112, 122;
+  --ion-color-danger-contrast: #240a0c;
+  --ion-color-danger-contrast-rgb: 36, 10, 12;
+  --ion-color-danger-shade: #d64550;
+  --ion-color-danger-tint: #e88a92;
+
+  --ion-color-azul: #5878e1;
+  --ion-color-azul-rgb: 88, 120, 225;
+  --ion-color-azul-contrast: #ffffff;
+  --ion-color-azul-contrast-rgb: 255, 255, 255;
+  --ion-color-azul-shade: #3e63dd;
+  --ion-color-azul-tint: #7391e8;
+
+  --ion-color-verde: #33a79c;
+  --ion-color-verde-rgb: 51, 167, 156;
+  --ion-color-verde-contrast: #ffffff;
+  --ion-color-verde-contrast-rgb: 255, 255, 255;
+  --ion-color-verde-shade: #0d9488;
+  --ion-color-verde-tint: #5cbab1;
+
+  --ion-color-morado: #9159f0;
+  --ion-color-morado-rgb: 145, 89, 240;
+  --ion-color-morado-contrast: #ffffff;
+  --ion-color-morado-contrast-rgb: 255, 255, 255;
+  --ion-color-morado-shade: #7c3aed;
+  --ion-color-morado-tint: #a578f2;
+
+  --ion-color-ambar: #ed9f4e;
+  --ion-color-ambar-rgb: 237, 159, 78;
+  --ion-color-ambar-contrast: #1c1c1c;
+  --ion-color-ambar-contrast-rgb: 28, 28, 28;
+  --ion-color-ambar-shade: #ea8c2e;
+  --ion-color-ambar-tint: #f0b06d;
+
+  --ion-color-rosa: #e14589;
+  --ion-color-rosa-rgb: 225, 69, 137;
+  --ion-color-rosa-contrast: #ffffff;
+  --ion-color-rosa-contrast-rgb: 255, 255, 255;
+  --ion-color-rosa-shade: #db2777;
+  --ion-color-rosa-tint: #e6699b;
+}
+
+/* ============================================
+   Clases utilitarias para los colores de identidad
+   (necesarias solo si alguna vez usas color="azul" etc.
+   directamente en un componente de Ionic; el resto del
+   código ya usa var(--ion-color-...) y no las necesita)
+   ============================================ */
+.ion-color-azul {
+  --ion-color-base: var(--ion-color-azul);
+  --ion-color-base-rgb: var(--ion-color-azul-rgb);
+  --ion-color-contrast: var(--ion-color-azul-contrast);
+  --ion-color-contrast-rgb: var(--ion-color-azul-contrast-rgb);
+  --ion-color-shade: var(--ion-color-azul-shade);
+  --ion-color-tint: var(--ion-color-azul-tint);
+}
+.ion-color-verde {
+  --ion-color-base: var(--ion-color-verde);
+  --ion-color-base-rgb: var(--ion-color-verde-rgb);
+  --ion-color-contrast: var(--ion-color-verde-contrast);
+  --ion-color-contrast-rgb: var(--ion-color-verde-contrast-rgb);
+  --ion-color-shade: var(--ion-color-verde-shade);
+  --ion-color-tint: var(--ion-color-verde-tint);
+}
+.ion-color-morado {
+  --ion-color-base: var(--ion-color-morado);
+  --ion-color-base-rgb: var(--ion-color-morado-rgb);
+  --ion-color-contrast: var(--ion-color-morado-contrast);
+  --ion-color-contrast-rgb: var(--ion-color-morado-contrast-rgb);
+  --ion-color-shade: var(--ion-color-morado-shade);
+  --ion-color-tint: var(--ion-color-morado-tint);
+}
+.ion-color-ambar {
+  --ion-color-base: var(--ion-color-ambar);
+  --ion-color-base-rgb: var(--ion-color-ambar-rgb);
+  --ion-color-contrast: var(--ion-color-ambar-contrast);
+  --ion-color-contrast-rgb: var(--ion-color-ambar-contrast-rgb);
+  --ion-color-shade: var(--ion-color-ambar-shade);
+  --ion-color-tint: var(--ion-color-ambar-tint);
+}
+.ion-color-rosa {
+  --ion-color-base: var(--ion-color-rosa);
+  --ion-color-base-rgb: var(--ion-color-rosa-rgb);
+  --ion-color-contrast: var(--ion-color-rosa-contrast);
+  --ion-color-contrast-rgb: var(--ion-color-rosa-contrast-rgb);
+  --ion-color-shade: var(--ion-color-rosa-shade);
+  --ion-color-tint: var(--ion-color-rosa-tint);
+}

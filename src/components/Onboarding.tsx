@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { IonModal, IonContent, IonButton, IonIcon } from '@ionic/react';
-import { pieChart, calculator, settings, arrowForwardOutline, checkmarkOutline } from 'ionicons/icons';
+import { pieChart, calculator, settings, footstepsOutline, arrowForwardOutline, checkmarkOutline } from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';
 
 const STORAGE_KEY = 'onboarding_visto';
 
-const pasos = [
+interface PasoOnboarding {
+  icono: string;
+  color: string;
+  titulo: string;
+  texto: string;
+  subpasos?: string[];
+}
+
+const pasos: PasoOnboarding[] = [
+  {
+    icono: footstepsOutline,
+    color: 'primary',
+    titulo: 'Así funciona',
+    texto: 'Todo en la app gira en torno a esto:',
+    subpasos: [
+      'Creas tu materia',
+      'Le pones una meta',
+      'Registras tus notas',
+      'La app te dice cuánto te falta'
+    ]
+  },
   {
     icono: pieChart,
     color: 'primary',
@@ -63,7 +83,24 @@ const Onboarding: React.FC = () => {
           </div>
 
           <h1 style={{ fontWeight: '800', fontSize: '1.4rem', margin: '0 0 12px 0', color: 'var(--ion-text-color)' }}>{actual.titulo}</h1>
-          <p style={{ fontSize: '0.95rem', color: 'var(--ion-color-medium)', maxWidth: '280px', lineHeight: '1.5', margin: '0 0 32px 0' }}>{actual.texto}</p>
+          <p style={{ fontSize: '0.95rem', color: 'var(--ion-color-medium)', maxWidth: '280px', lineHeight: '1.5', margin: '0 0 20px 0' }}>{actual.texto}</p>
+
+          {actual.subpasos && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', maxWidth: '260px', width: '100%', marginBottom: '20px' }}>
+              {actual.subpasos.map((sub, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '24px', height: '24px', minWidth: '24px', borderRadius: '50%', background: `var(--ion-color-${actual.color})`,
+                    color: `var(--ion-color-${actual.color}-contrast)`, fontSize: '0.75rem', fontWeight: '700',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {i + 1}
+                  </div>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--ion-text-color)', textAlign: 'left' }}>{sub}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '32px' }}>
             {pasos.map((_, i) => (
