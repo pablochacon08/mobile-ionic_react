@@ -17,6 +17,7 @@ import Tab3 from './pages/Tab3';
 import { MateriasProvider } from './context/MateriasContext';
 import { EscalasProvider } from './context/EscalasContext';
 import { TemaProvider } from './context/TemaContext';
+import Onboarding from './components/Onboarding';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -66,6 +67,7 @@ const App: React.FC = () => (
               </IonTabBar>
             </IonTabs>
           </IonReactRouter>
+          <Onboarding />
         </EscalasProvider>
       </MateriasProvider>
     </TemaProvider>
