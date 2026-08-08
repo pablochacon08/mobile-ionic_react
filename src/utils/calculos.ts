@@ -1,4 +1,4 @@
-import { Materia, Categoria } from '../context/MateriasContext';
+import { Materia, Categoria, EtapaEvaluacion } from '../context/MateriasContext';
 import { RangoEscala } from '../context/EscalasContext';
 
 export const getActiveKey = (etapa: number): keyof Materia => {
@@ -48,10 +48,46 @@ export const calcularEstadisticas = (mat: Materia) => {
     notaNecesaria = (mat.notaDeseada - acumuladoGlobal) / (pesoGlobalRestante / 100);
   }
 
-  return { notaP1, notaP2, notaPr, acumuladoGlobal, notaNecesaria, pesoActivoCargado, notaActivaParcial, listaActiva };
+  return { notaP1, notaP2, notaPr, acumuladoGlobal, notaNecesaria, pesoGlobalRestante, pesoActivoCargado, notaActivaParcial, listaActiva };
 };
 
 export const obtenerEtiquetaEscala = (valor: number, escalas: RangoEscala[]): string | null => {
   const rango = escalas.find(r => valor >= r.minimo && valor <= r.maximo);
   return rango ? rango.etiqueta : null;
+};
+
+// Resumen inteligente para el Dashboard ("qué necesita mi atención")
+export type TipoMensajeAtencion = 'exito' | 'alerta' | 'peligro';
+
+export const generarMensajeAtencion = (
+  materia: Materia,
+  stats: ReturnType<typeof calcularEstadisticas>
+): { texto: string; tipo: TipoMensajeAtencion } => {
+  const diferencia = materia.notaDeseada - stats.acumuladoGlobal;
+
+  if (diferencia <= 0) {
+    return { texto: `${materia.nombre} ya alcanzó su meta 🎉`, tipo: 'exito' };
+  }
+  if (stats.pesoGlobalRestante <= 0) {
+    return { texto: `${materia.nombre} ya no tiene actividades pendientes y no llegó a la meta`, tipo: 'peligro' };
+  }
+  if (stats.notaNecesaria > 100) {
+    return { texto: `${materia.nombre} necesitaría más de 100 en lo restante`, tipo: 'peligro' };
+  }
+  return {
+    texto: `${materia.nombre} necesita ${stats.notaNecesaria.toFixed(1)} en lo restante (a ${diferencia.toFixed(1)} pts de tu meta)`,
+    tipo: 'alerta'
+  };
+};
+
+// Indicador de progreso por etapa (P1 / P2 / Práctico)
+export type EstadoEtapa = 'completado' | 'en-progreso' | 'pendiente';
+
+export const obtenerProgresoEtapas = (etapa: EtapaEvaluacion): { p1: EstadoEtapa; p2: EstadoEtapa; practico: EstadoEtapa } => {
+  const estado = (n: number): EstadoEtapa => etapa > n ? 'completado' : etapa === n ? 'en-progreso' : 'pendiente';
+  return {
+    p1: estado(1),
+    p2: estado(2),
+    practico: estado(3),
+  };
 };

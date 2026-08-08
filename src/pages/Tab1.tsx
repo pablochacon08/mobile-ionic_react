@@ -3,7 +3,7 @@ import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
   IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
-  IonSpinner, IonToast, useIonAlert, IonItemSliding, IonItemOptions, IonItemOption,
+  IonSpinner, IonToast, useIonAlert, useIonRouter, IonItemSliding, IonItemOptions, IonItemOption,
   IonActionSheet
 } from '@ionic/react';
 import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, eyeOutline } from 'ionicons/icons';
@@ -12,7 +12,7 @@ import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
-import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala } from '../utils/calculos';
+import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala, generarMensajeAtencion, obtenerProgresoEtapas } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import './Tab1.css';
 
@@ -64,6 +64,31 @@ const AvatarMateria = ({ claveIcono, color }: { claveIcono: string, color: strin
   </div>
 );
 
+const ProgresoEtapas = ({ etapa }: { etapa: EtapaEvaluacion }) => {
+  const progreso = obtenerProgresoEtapas(etapa);
+  const pasos: { label: string; estado: 'completado' | 'en-progreso' | 'pendiente' }[] = [
+    { label: 'P1', estado: progreso.p1 },
+    { label: 'P2', estado: progreso.p2 },
+    { label: 'Práctico', estado: progreso.practico },
+  ];
+  const colorPorEstado = { 'completado': 'success', 'en-progreso': 'warning', 'pendiente': 'medium' };
+
+  return (
+    <div style={{ display: 'flex', gap: '5px', marginTop: '4px' }}>
+      {pasos.map(p => (
+        <span key={p.label} style={{
+          fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px',
+          background: `var(--ion-color-${colorPorEstado[p.estado]})`,
+          color: `var(--ion-color-${colorPorEstado[p.estado]}-contrast)`,
+          opacity: p.estado === 'pendiente' ? 0.45 : 1
+        }}>
+          {p.label}
+        </span>
+      ))}
+    </div>
+  );
+};
+
 const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' }}>
     <div style={{
@@ -82,10 +107,61 @@ const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
   </div>
 );
 
+interface CampoNotaProps {
+  value: number;
+  onChange: (valor: number) => void;
+  max?: number;
+  min?: number;
+  ultimoCampo?: boolean;
+  readonly?: boolean;
+  style?: React.CSSProperties;
+  campoId?: string;
+  siguienteId?: string;
+  refsMap?: React.MutableRefObject<Record<string, any>>;
+}
+
+const CampoNota: React.FC<CampoNotaProps> = ({ value, onChange, max = 100, min = 0, ultimoCampo, readonly, style, campoId, siguienteId, refsMap }) => {
+  const seleccionarAlEnfocar = async (e: any) => {
+    try {
+      const nativeInput = await e.target.getInputElement();
+      nativeInput.select();
+    } catch { /* en desktop sin soporte, simplemente no selecciona */ }
+  };
+
+  const manejarTecla = async (e: React.KeyboardEvent, elemento: any) => {
+    if (e.key !== 'Enter') return;
+    if (siguienteId && refsMap?.current[siguienteId]) {
+      refsMap.current[siguienteId].setFocus();
+    } else {
+      const nativeInput = await elemento?.getInputElement();
+      nativeInput?.blur();
+    }
+  };
+
+  return (
+    <IonInput
+      ref={el => { if (campoId && refsMap) refsMap.current[campoId] = el; }}
+      type="number"
+      inputmode="decimal"
+      enterkeyhint={ultimoCampo ? 'done' : 'next'}
+      readonly={readonly}
+      value={value}
+      onIonFocus={seleccionarAlEnfocar}
+      onKeyDown={e => manejarTecla(e, refsMap?.current[campoId ?? ''])}
+      onIonChange={e => {
+        const parsed = parseFloat(e.detail.value!);
+        onChange(isNaN(parsed) ? 0 : clamp(parsed, min, max));
+      }}
+      style={style}
+    />
+  );
+};
+
 const Tab1: React.FC = () => {
-  const { materias, cargando, agregarMateria, actualizarMateria, eliminarMateria } = useMaterias();
+  const { materias, cargando, agregarMateria, actualizarMateria, eliminarMateria, restaurarMateria } = useMaterias();
   const { escalas } = useEscalas();
   const [presentAlert] = useIonAlert();
+  const router = useIonRouter();
 
   const [isAddMateriaOpen, setIsAddMateriaOpen] = useState(false);
   const [nuevaMateriaNombre, setNuevaMateriaNombre] = useState('');
@@ -98,8 +174,13 @@ const Tab1: React.FC = () => {
   const [editNombre, setEditNombre] = useState('');
   const [editIcono, setEditIcono] = useState('');
   const [accionesPara, setAccionesPara] = useState<Materia | null>(null);
+  const [mostrarAccionesFab, setMostrarAccionesFab] = useState(false);
+  const [mostrarSelectorNota, setMostrarSelectorNota] = useState(false);
+  const [ultimaEliminada, setUltimaEliminada] = useState<Materia | null>(null);
+  const [mostrarToastUndo, setMostrarToastUndo] = useState(false);
   const celebratedRef = useRef<Record<string, boolean>>({});
   const slidingRefs = useRef<Record<string, any>>({});
+  const inputRefs = useRef<Record<string, any>>({});
   const longPressTimer = useRef<any>(null);
   const longPressActivado = useRef(false);
 
@@ -153,6 +234,11 @@ const Tab1: React.FC = () => {
     return materiasConStats.filter(m => m.stats.acumuladoGlobal < m.materia.notaDeseada).length;
   }, [materiasConStats]);
 
+  const materiaPrioritaria = materiasOrdenadas[0];
+  const mensajeAtencion = materiaPrioritaria
+    ? generarMensajeAtencion(materiaPrioritaria.materia, materiaPrioritaria.stats)
+    : null;
+
   const handleAgregarMateria = () => {
     if (!nuevaMateriaNombre.trim()) return;
     agregarMateria(nuevaMateriaNombre, nuevoIcono);
@@ -182,26 +268,30 @@ const Tab1: React.FC = () => {
     vibrar('ligero');
   };
 
+  const eliminarConUndo = (materia: Materia) => {
+    eliminarMateria(materia.id);
+    setUltimaEliminada(materia);
+    setMostrarToastUndo(true);
+    vibrar('medio');
+  };
+
   const solicitarEliminarDesdeSwipe = (materia: Materia) => {
     slidingRefs.current[materia.id]?.close();
-    eliminarConConfirmacion(materia, false);
+    eliminarConUndo(materia);
   };
 
   const eliminarConConfirmacion = (materia: Materia, cerrarModalDespues: boolean) => {
     presentAlert({
       header: 'Eliminar materia',
-      message: `¿Seguro que quieres eliminar "${materia.nombre}"? Esta acción no se puede deshacer.`,
+      message: `¿Seguro que quieres eliminar "${materia.nombre}"?`,
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
         {
           text: 'Eliminar',
           role: 'destructive',
           handler: () => {
-            eliminarMateria(materia.id);
             if (cerrarModalDespues) setIsDetailOpen(false);
-            setMensajeToast('Materia eliminada');
-            setMostrarToast(true);
-            vibrar('medio');
+            eliminarConUndo(materia);
           }
         }
       ]
@@ -212,6 +302,12 @@ const Tab1: React.FC = () => {
     cerrarTodosSliding();
     setMateriaSeleccionada(materia);
     setIsDetailOpen(true);
+  };
+
+  const iniciarRegistrarNota = () => {
+    if (materias.length === 0) { setIsAddMateriaOpen(true); return; }
+    if (materias.length === 1) { abrirDetalleMateria(materias[0]); return; }
+    setMostrarSelectorNota(true);
   };
 
   const compartirMateria = async (materia: Materia) => {
@@ -351,6 +447,22 @@ const Tab1: React.FC = () => {
 
         {!cargando && materias.length > 0 && (
           <>
+            {mensajeAtencion && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
+                borderRadius: '12px', marginBottom: '14px',
+                background: mensajeAtencion.tipo === 'exito' ? 'rgba(45,211,111,0.12)'
+                          : mensajeAtencion.tipo === 'peligro' ? 'rgba(235,68,90,0.12)'
+                          : 'rgba(255,196,9,0.12)',
+                color: mensajeAtencion.tipo === 'exito' ? 'var(--ion-color-success)'
+                     : mensajeAtencion.tipo === 'peligro' ? 'var(--ion-color-danger)'
+                     : 'var(--ion-color-warning-shade)'
+              }}>
+                <IonIcon icon={mensajeAtencion.tipo === 'exito' ? trendingUpOutline : alertCircleOutline} style={{ fontSize: '1.2rem', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{mensajeAtencion.texto}</span>
+              </div>
+            )}
+
             <IonCard style={{ borderRadius: '16px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
               <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
@@ -398,6 +510,7 @@ const Tab1: React.FC = () => {
                       <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', margin: 0 }}>
                         {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
                       </p>
+                      <ProgresoEtapas etapa={materia.etapa} />
                     </IonLabel>
                     <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
                   </IonItem>
@@ -413,8 +526,30 @@ const Tab1: React.FC = () => {
         )}
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '20px', marginRight: '10px' }}>
-          <IonFabButton color="primary" onClick={() => { cerrarTodosSliding(); setIsAddMateriaOpen(true); }}><IonIcon icon={add} /></IonFabButton>
+          <IonFabButton color="primary" onClick={() => { cerrarTodosSliding(); setMostrarAccionesFab(true); }}><IonIcon icon={add} /></IonFabButton>
         </IonFab>
+
+        <IonActionSheet
+          isOpen={mostrarAccionesFab}
+          onDidDismiss={() => setMostrarAccionesFab(false)}
+          header="Acciones rápidas"
+          buttons={[
+            { text: 'Nueva materia', icon: schoolOutline, handler: () => setIsAddMateriaOpen(true) },
+            { text: 'Registrar nota', icon: createOutline, handler: () => iniciarRegistrarNota() },
+            { text: 'Abrir Predictor', icon: trendingUpOutline, handler: () => router.push('/tab2') },
+            { text: 'Cancelar', role: 'cancel' }
+          ]}
+        />
+
+        <IonActionSheet
+          isOpen={mostrarSelectorNota}
+          onDidDismiss={() => setMostrarSelectorNota(false)}
+          header="¿En qué materia?"
+          buttons={[
+            ...materias.map(m => ({ text: m.nombre, handler: () => abrirDetalleMateria(m) })),
+            { text: 'Cancelar', role: 'cancel' as const }
+          ]}
+        />
 
         <IonToast
           isOpen={mostrarToast}
@@ -423,6 +558,22 @@ const Tab1: React.FC = () => {
           position="bottom"
           color="success"
           onDidDismiss={() => setMostrarToast(false)}
+        />
+
+        <IonToast
+          isOpen={mostrarToastUndo}
+          message={ultimaEliminada ? `"${ultimaEliminada.nombre}" eliminada` : ''}
+          duration={4000}
+          position="bottom"
+          color="dark"
+          buttons={[{
+            text: 'DESHACER',
+            handler: () => {
+              if (ultimaEliminada) restaurarMateria(ultimaEliminada);
+              setUltimaEliminada(null);
+            }
+          }]}
+          onDidDismiss={() => setMostrarToastUndo(false)}
         />
 
         <IonActionSheet
@@ -474,7 +625,11 @@ const Tab1: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Meta Final</p>
-                        <IonInput type="number" value={materiaSeleccionada.notaDeseada} onIonChange={e => actualizarMateriaActual('notaDeseada', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ fontWeight: '800', fontSize: '1.6rem', color: `var(--ion-color-${materiaSeleccionada.color})`, textAlign: 'center' }} />
+                        <CampoNota
+                          value={materiaSeleccionada.notaDeseada}
+                          onChange={v => actualizarMateriaActual('notaDeseada', v)}
+                          style={{ fontWeight: '800', fontSize: '1.6rem', color: `var(--ion-color-${materiaSeleccionada.color})`, textAlign: 'center' }}
+                        />
                       </div>
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Nota Global</p>
@@ -503,9 +658,18 @@ const Tab1: React.FC = () => {
                     </div>
                     <IonItem lines="none" color="transparent">
                       <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>% Teórico (P1 + P2)</IonLabel>
-                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoTeorico} onIonChange={e => actualizarMateriaActual('pesoTeorico', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
+                      <CampoNota
+                        value={materiaSeleccionada.pesoTeorico}
+                        onChange={v => actualizarMateriaActual('pesoTeorico', v)}
+                        style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                      />
                       <IonLabel color="medium" style={{ fontSize: '0.85rem', marginLeft: '15px' }}>% Práctico</IonLabel>
-                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoPractico} onIonChange={e => actualizarMateriaActual('pesoPractico', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
+                      <CampoNota
+                        value={materiaSeleccionada.pesoPractico}
+                        onChange={v => actualizarMateriaActual('pesoPractico', v)}
+                        ultimoCampo
+                        style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                      />
                     </IonItem>
                     {sumaPesosGlobales !== 100 && (
                       <div style={{ padding: '8px 15px 12px', fontSize: '0.75rem', color: 'var(--ion-color-danger)', fontWeight: '600' }}>
@@ -552,11 +716,21 @@ const Tab1: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '10px' }} onClick={e => e.stopPropagation()}>
                               <div style={{ textAlign: 'center' }}>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', display: 'block' }}>Nota/100</span>
-                                <IonInput type="number" readonly={tieneSubs} value={tieneSubs ? notaCalculada.toFixed(1) : cat.notaGlobalRapida} onIonChange={e => actualizarCategoria(cat.id, 'notaGlobalRapida', parseFloat(e.detail.value!) || 0)} style={{ width: '50px', textAlign: 'center', background: tieneSubs ? 'transparent' : 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold', color: 'var(--ion-color-primary)' }} />
+                                <CampoNota
+                                  readonly={tieneSubs}
+                                  value={tieneSubs ? Number(notaCalculada.toFixed(1)) : cat.notaGlobalRapida}
+                                  onChange={v => actualizarCategoria(cat.id, 'notaGlobalRapida', v)}
+                                  style={{ width: '50px', textAlign: 'center', background: tieneSubs ? 'transparent' : 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold', color: 'var(--ion-color-primary)' }}
+                                />
                               </div>
                               <div style={{ textAlign: 'center' }}>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', display: 'block' }}>Peso%</span>
-                                <IonInput type="number" value={cat.peso} onIonChange={e => actualizarCategoria(cat.id, 'peso', parseFloat(e.detail.value!) || 0)} style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
+                                <CampoNota
+                                  value={cat.peso}
+                                  onChange={v => actualizarCategoria(cat.id, 'peso', v)}
+                                  ultimoCampo={!tieneSubs}
+                                  style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                                />
                               </div>
                               <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.2rem', marginLeft: '5px', opacity: 0.8 }} onClick={() => eliminarCategoria(cat.id)} />
                             </div>
@@ -575,9 +749,28 @@ const Tab1: React.FC = () => {
                                   <IonInput value={sub.nombre} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'nombre', e.detail.value!)} style={{ fontSize: '0.9rem' }} placeholder="Nombre" />
 
                                   <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <IonInput type="number" value={sub.notaObtenida} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'notaObtenida', parseFloat(e.detail.value!) || 0)} style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }} />
+                                    <CampoNota
+                                      campoId={`obtenida-${sub.id}`}
+                                      siguienteId={`maxima-${sub.id}`}
+                                      refsMap={inputRefs}
+                                      value={sub.notaObtenida}
+                                      min={0}
+                                      max={sub.notaMaxima || 0}
+                                      onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaObtenida', v)}
+                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }}
+                                    />
                                     <span style={{ color: 'var(--ion-color-medium)' }}>/</span>
-                                    <IonInput type="number" value={sub.notaMaxima} onIonChange={e => actualizarSubActividad(cat.id, sub.id, 'notaMaxima', parseFloat(e.detail.value!) || 0)} style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem' }} />
+                                    <CampoNota
+                                      campoId={`maxima-${sub.id}`}
+                                      siguienteId={cat.subActividades[index + 1] ? `obtenida-${cat.subActividades[index + 1].id}` : undefined}
+                                      refsMap={inputRefs}
+                                      ultimoCampo={!cat.subActividades[index + 1]}
+                                      value={sub.notaMaxima}
+                                      min={0}
+                                      max={9999}
+                                      onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaMaxima', v)}
+                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem' }}
+                                    />
                                     <IonIcon icon={trashOutline} color="danger" style={{ cursor: 'pointer', fontSize: '1.1rem', marginLeft: '5px', opacity: 0.6 }} onClick={() => eliminarSubActividad(cat.id, sub.id)} />
                                   </div>
                                 </IonItem>
