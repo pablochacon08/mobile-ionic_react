@@ -5,6 +5,20 @@ http://ionicframework.com/docs/theming/ */
    MODO CLARO
    ============================================ */
 :root {
+  /* --- FONDOS Y TEXTOS BASE --- */
+  --ion-background-color: #f4f5f8; /* Gris súper sutil para que las tarjetas resalten */
+  --ion-background-color-rgb: 244, 245, 248;
+  --ion-text-color: #1c1c1e;
+  --ion-text-color-rgb: 28, 28, 30;
+
+  --ion-card-background: #ffffff; /* Tarjetas en blanco puro */
+  
+  /* --- STEPS (Grises escalonados para inputs y sombras) --- */
+  --ion-color-step-50: #f0f0f3;
+  --ion-color-step-100: #e8e9ec;
+  --ion-color-step-150: #e0e2e6;
+  --ion-color-step-200: #d7d9df;
+
   /* --- Acento principal (botones, links, elementos activos) --- */
   --ion-color-primary: #3e63dd;
   --ion-color-primary-rgb: 62, 99, 221;
@@ -29,7 +43,7 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-tertiary-shade: #6d33d1;
   --ion-color-tertiary-tint: #9159f0;
 
-  /* --- Success / Warning / Danger: reservados SOLO para estado (riesgo, aprobado, error) --- */
+  /* --- Success / Warning / Danger --- */
   --ion-color-success: #3ca66b;
   --ion-color-success-rgb: 60, 166, 107;
   --ion-color-success-contrast: #ffffff;
@@ -72,11 +86,7 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-light-shade: #d9d9da;
   --ion-color-light-tint: #f8f8f9;
 
-  /* ============================================
-     Colores de IDENTIDAD para materias
-     (separados a propósito de success/warning/danger
-     para que nunca se confundan con el color de riesgo)
-     ============================================ */
+  /* Colores de IDENTIDAD para materias */
   --ion-color-azul: #3e63dd;
   --ion-color-azul-rgb: 62, 99, 221;
   --ion-color-azul-contrast: #ffffff;
@@ -115,10 +125,22 @@ http://ionicframework.com/docs/theming/ */
 
 /* ============================================
    MODO OSCURO
-   Se activa agregando la clase .ion-palette-dark al <html>
-   (ya lo tienes importado en App.tsx vía palettes/dark.class.css)
    ============================================ */
 .ion-palette-dark {
+  /* --- FONDOS Y TEXTOS BASE --- */
+  --ion-background-color: #121212;
+  --ion-background-color-rgb: 18, 18, 18;
+  --ion-text-color: #ffffff;
+  --ion-text-color-rgb: 255, 255, 255;
+
+  --ion-card-background: #1c1c1e;
+  
+  /* --- STEPS (Profundidad para inputs y fondos) --- */
+  --ion-color-step-50: #232325;
+  --ion-color-step-100: #2a2a2c;
+  --ion-color-step-150: #313133;
+  --ion-color-step-200: #38383a;
+
   --ion-color-primary: #5878e1;
   --ion-color-primary-rgb: 88, 120, 225;
   --ion-color-primary-contrast: #ffffff;
@@ -197,49 +219,9 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-rosa-tint: #e6699b;
 }
 
-/* ============================================
-   Clases utilitarias para los colores de identidad
-   (necesarias solo si alguna vez usas color="azul" etc.
-   directamente en un componente de Ionic; el resto del
-   código ya usa var(--ion-color-...) y no las necesita)
-   ============================================ */
-.ion-color-azul {
-  --ion-color-base: var(--ion-color-azul);
-  --ion-color-base-rgb: var(--ion-color-azul-rgb);
-  --ion-color-contrast: var(--ion-color-azul-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-azul-contrast-rgb);
-  --ion-color-shade: var(--ion-color-azul-shade);
-  --ion-color-tint: var(--ion-color-azul-tint);
-}
-.ion-color-verde {
-  --ion-color-base: var(--ion-color-verde);
-  --ion-color-base-rgb: var(--ion-color-verde-rgb);
-  --ion-color-contrast: var(--ion-color-verde-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-verde-contrast-rgb);
-  --ion-color-shade: var(--ion-color-verde-shade);
-  --ion-color-tint: var(--ion-color-verde-tint);
-}
-.ion-color-morado {
-  --ion-color-base: var(--ion-color-morado);
-  --ion-color-base-rgb: var(--ion-color-morado-rgb);
-  --ion-color-contrast: var(--ion-color-morado-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-morado-contrast-rgb);
-  --ion-color-shade: var(--ion-color-morado-shade);
-  --ion-color-tint: var(--ion-color-morado-tint);
-}
-.ion-color-ambar {
-  --ion-color-base: var(--ion-color-ambar);
-  --ion-color-base-rgb: var(--ion-color-ambar-rgb);
-  --ion-color-contrast: var(--ion-color-ambar-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-ambar-contrast-rgb);
-  --ion-color-shade: var(--ion-color-ambar-shade);
-  --ion-color-tint: var(--ion-color-ambar-tint);
-}
-.ion-color-rosa {
-  --ion-color-base: var(--ion-color-rosa);
-  --ion-color-base-rgb: var(--ion-color-rosa-rgb);
-  --ion-color-contrast: var(--ion-color-rosa-contrast);
-  --ion-color-contrast-rgb: var(--ion-color-rosa-contrast-rgb);
-  --ion-color-shade: var(--ion-color-rosa-shade);
-  --ion-color-tint: var(--ion-color-rosa-tint);
-}
+/* Clases utilitarias */
+.ion-color-azul { --ion-color-base: var(--ion-color-azul); --ion-color-base-rgb: var(--ion-color-azul-rgb); --ion-color-contrast: var(--ion-color-azul-contrast); --ion-color-contrast-rgb: var(--ion-color-azul-contrast-rgb); --ion-color-shade: var(--ion-color-azul-shade); --ion-color-tint: var(--ion-color-azul-tint); }
+.ion-color-verde { --ion-color-base: var(--ion-color-verde); --ion-color-base-rgb: var(--ion-color-verde-rgb); --ion-color-contrast: var(--ion-color-verde-contrast); --ion-color-contrast-rgb: var(--ion-color-verde-contrast-rgb); --ion-color-shade: var(--ion-color-verde-shade); --ion-color-tint: var(--ion-color-verde-tint); }
+.ion-color-morado { --ion-color-base: var(--ion-color-morado); --ion-color-base-rgb: var(--ion-color-morado-rgb); --ion-color-contrast: var(--ion-color-morado-contrast); --ion-color-contrast-rgb: var(--ion-color-morado-contrast-rgb); --ion-color-shade: var(--ion-color-morado-shade); --ion-color-tint: var(--ion-color-morado-tint); }
+.ion-color-ambar { --ion-color-base: var(--ion-color-ambar); --ion-color-base-rgb: var(--ion-color-ambar-rgb); --ion-color-contrast: var(--ion-color-ambar-contrast); --ion-color-contrast-rgb: var(--ion-color-ambar-contrast-rgb); --ion-color-shade: var(--ion-color-ambar-shade); --ion-color-tint: var(--ion-color-ambar-tint); }
+.ion-color-rosa { --ion-color-base: var(--ion-color-rosa); --ion-color-base-rgb: var(--ion-color-rosa-rgb); --ion-color-contrast: var(--ion-color-rosa-contrast); --ion-color-contrast-rgb: var(--ion-color-rosa-contrast-rgb); --ion-color-shade: var(--ion-color-rosa-shade); --ion-color-tint: var(--ion-color-rosa-tint); }

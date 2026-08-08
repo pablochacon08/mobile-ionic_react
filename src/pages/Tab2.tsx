@@ -26,7 +26,7 @@ const Tab2: React.FC = () => {
     try {
       const nativeInput = await e.target.getInputElement();
       nativeInput.select();
-    } catch { /* en desktop sin soporte, simplemente no selecciona */ }
+    } catch { }
   };
 
   const statsReales = materia ? calcularEstadisticas(materia) : null;
@@ -108,7 +108,7 @@ const Tab2: React.FC = () => {
       </IonHeader>
       <IonContent fullscreen className="ion-padding">
 
-        <IonCard style={{ borderRadius: '14px', marginBottom: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
           <IonItem lines="none" color="transparent">
             <div style={{
               width: '38px', height: '38px', minWidth: '38px', borderRadius: '10px',
@@ -133,7 +133,7 @@ const Tab2: React.FC = () => {
           </IonItem>
         </IonCard>
 
-        <IonCard style={{ borderRadius: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '16px', boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
           <IonCardContent style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
               <div style={{ flex: 1 }}>
@@ -180,7 +180,7 @@ const Tab2: React.FC = () => {
           const valorSimulado = simulacion[cat.id];
 
           return (
-            <IonCard key={cat.id} style={{ borderRadius: '14px', margin: '0 0 10px 0', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+            <IonCard key={cat.id} style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', margin: '0 0 10px 0', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
               <IonItem lines="none" color="transparent">
                 <IonLabel>
                   <h3 style={{ fontWeight: '700', fontSize: '0.95rem', margin: '0 0 2px 0' }}>{cat.nombre}</h3>
@@ -209,7 +209,7 @@ const Tab2: React.FC = () => {
         })}
 
         <div style={{
-          background: alcanzaMeta ? 'rgba(var(--ion-color-success-rgb), 0.15)' : 'var(--ion-color-step-50)',
+          background: alcanzaMeta ? 'rgba(var(--ion-color-success-rgb), 0.15)' : 'var(--ion-color-step-100)',
           marginTop: '20px', borderRadius: '14px', padding: '20px', textAlign: 'center'
         }}>
           {alcanzaMeta ? (

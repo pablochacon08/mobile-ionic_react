@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
-  IonItem, IonLabel, IonInput, IonButton, IonIcon, IonText,
-  IonGrid, IonRow, IonCol, IonSpinner
+  IonItem, IonText, IonGrid, IonRow, IonCol, IonSpinner, IonIcon, IonInput, IonButton
 } from '@ionic/react';
 import { addCircleOutline, trashOutline, colorPaletteOutline, sunnyOutline, moonOutline, phonePortraitOutline, warningOutline } from 'ionicons/icons';
 import { useEscalas, RangoEscala } from '../context/EscalasContext';
@@ -62,7 +61,9 @@ const Tab3: React.FC = () => {
       <IonContent fullscreen className="ion-padding">
 
         <p style={{ margin: '0 0 8px 5px', fontSize: '0.8rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Apariencia</p>
-        <IonCard style={{ borderRadius: '14px', marginBottom: '22px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+        
+        {/* Tarjeta de Apariencia con fondo forzado y sombra suave */}
+        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', marginBottom: '22px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
           <IonGrid style={{ padding: '10px' }}>
             <IonRow>
               {opcionesTema.map(op => (
@@ -72,7 +73,7 @@ const Tab3: React.FC = () => {
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
                       padding: '12px 4px', borderRadius: '10px', cursor: 'pointer',
-                      border: modo === op.valor ? 'none' : '1px solid var(--ion-color-step-200)',
+                      border: modo === op.valor ? 'none' : '1px solid var(--ion-color-step-150)',
                       background: modo === op.valor ? 'var(--ion-color-primary)' : 'var(--ion-color-step-50)'
                     }}
                   >
@@ -88,7 +89,7 @@ const Tab3: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 16px 5px' }}>
           <IonIcon icon={colorPaletteOutline} color="medium" style={{ fontSize: '1.1rem' }} />
           <IonText color="medium">
-            <p style={{ fontSize: '0.85rem', margin: 0 }}>Personaliza los rangos y etiquetas de tu escala de notas</p>
+            <p style={{ fontSize: '0.85rem', margin: 0, fontWeight: '600' }}>Personaliza los rangos y etiquetas de tu escala de notas</p>
           </IonText>
         </div>
 
@@ -99,20 +100,27 @@ const Tab3: React.FC = () => {
               <span style={{ color: 'var(--ion-color-danger)', fontWeight: '700', fontSize: '0.85rem' }}>Rangos traslapados</span>
             </div>
             {conflictos.map((c, i) => (
-              <p key={i} style={{ color: 'var(--ion-color-danger)', fontSize: '0.78rem', margin: '2px 0' }}>{c}</p>
+              <p key={i} style={{ color: 'var(--ion-color-danger)', fontSize: '0.78rem', margin: '2px 0', fontWeight: '600' }}>{c}</p>
             ))}
           </div>
         )}
 
+        {/* Lista de Escalas con profundidad visual */}
         {escalas.map((rango) => {
           const tieneConflicto = conflictos.some(c => c.includes(`"${rango.etiqueta || 'Sin nombre'}"`));
           return (
-            <IonCard key={rango.id} style={{ borderRadius: '14px', marginBottom: '10px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', border: tieneConflicto ? '1.5px solid var(--ion-color-danger)' : 'none' }}>
+            <IonCard key={rango.id} style={{ 
+              background: 'var(--ion-card-background, #ffffff)', 
+              borderRadius: '14px', 
+              marginBottom: '10px', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)', 
+              border: tieneConflicto ? '1.5px solid var(--ion-color-danger)' : 'none' 
+            }}>
               <IonItem lines="none" color="transparent">
                 <IonInput
                   value={rango.etiqueta}
                   onIonChange={e => actualizarRango(rango.id, 'etiqueta', e.detail.value ?? '')}
-                  style={{ fontWeight: '700', fontSize: '0.95rem' }}
+                  style={{ fontWeight: '800', fontSize: '0.95rem' }}
                   placeholder="Etiqueta"
                 />
                 <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -123,7 +131,7 @@ const Tab3: React.FC = () => {
                     max={100}
                     style={{ width: '48px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '8px', fontWeight: '700' }}
                   />
-                  <span style={{ color: 'var(--ion-color-medium)', fontSize: '0.9rem' }}>-</span>
+                  <span style={{ color: 'var(--ion-color-medium)', fontSize: '0.9rem', fontWeight: '800' }}>-</span>
                   <CampoNota
                     value={rango.maximo}
                     onChange={v => actualizarRango(rango.id, 'maximo', v)}

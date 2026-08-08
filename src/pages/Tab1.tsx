@@ -39,7 +39,6 @@ const PLANTILLAS_EVALUACION: Plantilla[] = [
   { id: 'personalizado', nombre: 'Personalizado', descripcion: 'Empezar desde cero', categorias: [] },
 ];
 
-// Fondos degradados por nivel de riesgo, para dar sensación de "estado" a simple vista
 const FONDO_POR_RIESGO: Record<string, string> = {
   success: 'linear-gradient(135deg, var(--ion-card-background) 55%, rgba(var(--ion-color-success-rgb), 0.10))',
   warning: 'linear-gradient(135deg, var(--ion-card-background) 55%, rgba(var(--ion-color-warning-rgb), 0.12))',
@@ -59,12 +58,9 @@ const vibrar = async (tipo: 'ligero' | 'medio' | 'exito') => {
     if (tipo === 'ligero') await Haptics.impact({ style: ImpactStyle.Light });
     else if (tipo === 'medio') await Haptics.impact({ style: ImpactStyle.Medium });
     else if (tipo === 'exito') await Haptics.notification({ type: NotificationType.Success });
-  } catch (error) {
-    // Silencioso: en navegador de escritorio simplemente no vibra
-  }
+  } catch (error) {}
 };
 
-// Color de riesgo según qué tan lejos está la materia de su meta
 const colorPorRiesgo = (diferencia: number): string => {
   if (diferencia <= 0) return 'success';
   if (diferencia <= 10) return 'warning';
@@ -175,7 +171,7 @@ const Sparkline = ({ datos, color }: { datos: HistorialPunto[], color: string })
 const TarjetaEsqueleto = () => (
   <div style={{
     display: 'flex', alignItems: 'center', padding: '14px', borderRadius: '14px',
-    background: 'var(--ion-card-background)', marginBottom: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+    background: 'var(--ion-card-background)', marginBottom: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
   }}>
     <IonSkeletonText animated style={{ width: '42px', height: '42px', borderRadius: '12px', marginRight: '14px', flexShrink: 0 }} />
     <div style={{ flex: 1 }}>
@@ -203,8 +199,6 @@ const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
     </IonButton>
   </div>
 );
-
-// CampoNota ahora vive en components/CampoNota.tsx (importado arriba) para reutilizarse en Tab2 y Tab3
 
 const Tab1: React.FC = () => {
   const { materias, cargando, rachaDias, agregarMateria, actualizarMateria, eliminarMateria, restaurarMateria, recargarMaterias } = useMaterias();
@@ -320,7 +314,7 @@ const Tab1: React.FC = () => {
 
   const cerrarTodosSliding = () => {
     Object.values(slidingRefs.current).forEach((ref: any) => {
-      try { ref?.close(); } catch (e) { /* ignorar */ }
+      try { ref?.close(); } catch (e) {}
     });
   };
 
@@ -476,22 +470,13 @@ const Tab1: React.FC = () => {
     lineas.push('', 'Calculado con Mis Calificaciones');
 
     try {
-      await Share.share({
-        title: materia.nombre,
-        text: lineas.join('\n')
-      });
-    } catch (error) {
-      console.log('Compartir cancelado o no disponible:', error);
-    }
+      await Share.share({ title: materia.nombre, text: lineas.join('\n') });
+    } catch (error) {}
   };
 
   const compartirResumenGeneral = async () => {
     if (materias.length === 0) return;
-    const lineas = [
-      '📊 Resumen académico',
-      `Promedio general: ${promedioGeneral.toFixed(1)}`,
-      ''
-    ];
+    const lineas = ['📊 Resumen académico', `Promedio general: ${promedioGeneral.toFixed(1)}`, ''];
     materiasOrdenadas.forEach(({ materia, stats }) => {
       const estado = stats.acumuladoGlobal >= materia.notaDeseada ? '✅' : '⚠️';
       lineas.push(`${estado} ${materia.nombre}: ${stats.acumuladoGlobal.toFixed(1)} (meta ${materia.notaDeseada})`);
@@ -500,9 +485,7 @@ const Tab1: React.FC = () => {
 
     try {
       await Share.share({ title: 'Mi resumen académico', text: lineas.join('\n') });
-    } catch (error) {
-      console.log('Compartir cancelado o no disponible:', error);
-    }
+    } catch (error) {}
   };
 
   const actualizarMateriaActual = (campo: keyof Materia, valor: any) => {
@@ -658,7 +641,7 @@ const Tab1: React.FC = () => {
             )}
 
             <IonCard style={{
-              borderRadius: '16px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+              borderRadius: '16px', marginBottom: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
               background: FONDO_PROMEDIO_POR_RIESGO[colorPromedioGeneral], transition: 'background 0.5s ease'
             }}>
               <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -719,7 +702,7 @@ const Tab1: React.FC = () => {
                       onPointerLeave={cancelarPresionLarga}
                       style={{
                         '--background': FONDO_POR_RIESGO[colorRiesgo], '--padding-start': '14px', '--padding-end': '14px',
-                        '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
                         borderRadius: '14px', borderLeft: `4px solid var(--ion-color-${colorRiesgo})`,
                         transition: 'border-color 0.4s ease, background 0.5s ease'
                       } as any}
@@ -850,7 +833,8 @@ const Tab1: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ background: 'var(--ion-card-background)', borderRadius: '12px', padding: '20px', marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+                  {/* AQUÍ FORZAMOS EL BLANCO EN MODO CLARO Y EL SOMBREADO */}
+                  <div style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '12px', padding: '20px', marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
@@ -887,8 +871,8 @@ const Tab1: React.FC = () => {
                 </div>
 
                 <div className="ion-padding">
-                  <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-color-step-50)', boxShadow: 'none' }}>
-                    <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-100)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+                    <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <IonIcon icon={statsChartOutline} style={{ fontSize: '0.9rem' }} /> TENDENCIA
                     </div>
                     <div style={{ padding: '14px 15px' }}>
@@ -897,8 +881,8 @@ const Tab1: React.FC = () => {
                   </IonCard>
 
                   {modoAvanzado && (
-                    <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-color-step-50)', boxShadow: 'none' }}>
-                      <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-100)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+                      <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         CÓMO SE REPARTE TU NOTA FINAL
                         <IonIcon icon={helpCircleOutline} style={{ fontSize: '0.9rem', cursor: 'pointer' }} onClick={() => mostrarAyuda('¿Cómo se reparte tu nota final?', 'Tu nota final de la materia se arma con dos partes: los parciales (exámenes) y el trabajo práctico. Aquí decides qué porcentaje vale cada uno. Por ejemplo, 70% parciales y 30% práctico. Los dos números deben sumar 100%.')} />
                       </div>
@@ -907,14 +891,14 @@ const Tab1: React.FC = () => {
                         <CampoNota
                           value={materiaSeleccionada.pesoTeorico}
                           onChange={v => actualizarMateriaActual('pesoTeorico', v)}
-                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
                         />
                         <IonLabel color="medium" style={{ fontSize: '0.85rem', marginLeft: '15px' }}>% Práctico</IonLabel>
                         <CampoNota
                           value={materiaSeleccionada.pesoPractico}
                           onChange={v => actualizarMateriaActual('pesoPractico', v)}
                           ultimoCampo
-                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
                         />
                       </IonItem>
                       {sumaPesosGlobales !== 100 && (
@@ -927,12 +911,12 @@ const Tab1: React.FC = () => {
 
                   {materiaSeleccionada.etapa > 1 && (
                     <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-                      <div style={{ flex: 1, padding: '10px', background: 'var(--ion-color-step-100)', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ flex: 1, padding: '10px', background: 'var(--ion-card-background)', borderRadius: '8px', textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Parcial 1</p>
                         <p style={{ margin: '5px 0 0', fontWeight: 'bold' }}>{stats.notaP1.toFixed(1)}</p>
                       </div>
                       {materiaSeleccionada.etapa === 3 && (
-                        <div style={{ flex: 1, padding: '10px', background: 'var(--ion-color-step-100)', borderRadius: '8px', textAlign: 'center' }}>
+                        <div style={{ flex: 1, padding: '10px', background: 'var(--ion-card-background)', borderRadius: '8px', textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
                           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Parcial 2</p>
                           <p style={{ margin: '5px 0 0', fontWeight: 'bold' }}>{stats.notaP2.toFixed(1)}</p>
                         </div>
@@ -953,7 +937,7 @@ const Tab1: React.FC = () => {
                       const tieneSubs = cat.subActividades.length > 0;
 
                       return (
-                        <IonAccordion key={cat.id} value={cat.id} style={{ background: 'var(--ion-color-step-50)', borderRadius: '10px', marginBottom: '10px' }}>
+                        <IonAccordion key={cat.id} value={cat.id} style={{ background: 'var(--ion-card-background)', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                           <IonItem slot="header" color="transparent" lines="none">
                             <IonLabel>
                               <h3 style={{ fontWeight: '700', fontSize: '0.95rem' }}>{cat.nombre}</h3>
@@ -967,7 +951,7 @@ const Tab1: React.FC = () => {
                                   readonly={tieneSubs}
                                   value={tieneSubs ? Number(notaCalculada.toFixed(1)) : cat.notaGlobalRapida}
                                   onChange={v => actualizarCategoria(cat.id, 'notaGlobalRapida', v)}
-                                  style={{ width: '50px', textAlign: 'center', background: tieneSubs ? 'transparent' : 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold', color: 'var(--ion-color-primary)' }}
+                                  style={{ width: '50px', textAlign: 'center', background: tieneSubs ? 'transparent' : 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold', color: 'var(--ion-color-primary)' }}
                                 />
                               </div>
                               <div style={{ textAlign: 'center' }}>
@@ -976,7 +960,7 @@ const Tab1: React.FC = () => {
                                   value={cat.peso}
                                   onChange={v => actualizarCategoria(cat.id, 'peso', v)}
                                   ultimoCampo={!tieneSubs}
-                                  style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }}
+                                  style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
                                 />
                               </div>
                               <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.2rem', marginLeft: '5px', opacity: 0.8 }} onClick={() => eliminarCategoria(cat.id)} />
@@ -984,7 +968,7 @@ const Tab1: React.FC = () => {
                           </IonItem>
 
                           <div slot="content" style={{ padding: '0 15px 15px 15px' }}>
-                            <div style={{ background: 'var(--ion-card-background)', borderRadius: '8px', padding: '10px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <div style={{ background: 'var(--ion-color-step-50)', borderRadius: '8px', padding: '10px' }}>
 
                               <IonListHeader style={{ padding: 0, minHeight: 'auto', marginBottom: '10px' }}>
                                 <IonLabel style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--ion-color-medium)', margin: 0 }}>Notas individuales de esta actividad</IonLabel>
@@ -1004,7 +988,7 @@ const Tab1: React.FC = () => {
                                       min={0}
                                       max={sub.notaMaxima || 0}
                                       onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaObtenida', v)}
-                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }}
+                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-card-background)', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', color: `var(--ion-color-${materiaSeleccionada.color})` }}
                                     />
                                     <span style={{ color: 'var(--ion-color-medium)' }}>/</span>
                                     <CampoNota
@@ -1016,7 +1000,7 @@ const Tab1: React.FC = () => {
                                       min={0}
                                       max={9999}
                                       onChange={v => actualizarSubActividad(cat.id, sub.id, 'notaMaxima', v)}
-                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '4px', fontSize: '0.9rem' }}
+                                      style={{ width: '40px', textAlign: 'center', background: 'var(--ion-card-background)', borderRadius: '4px', fontSize: '0.9rem' }}
                                     />
                                     <IonIcon icon={trashOutline} color="danger" style={{ cursor: 'pointer', fontSize: '1.1rem', marginLeft: '5px', opacity: 0.6 }} onClick={() => eliminarSubActividad(cat.id, sub.id)} />
                                   </div>
@@ -1046,7 +1030,7 @@ const Tab1: React.FC = () => {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '30px', padding: '15px 0', borderTop: '1px dashed var(--ion-color-step-150)' }}>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '30px', padding: '15px 0', borderTop: '1px dashed var(--ion-color-step-100)' }}>
                     {materiaSeleccionada.etapa === 1 && (
                       <IonButton expand="block" fill="outline" color="medium" disabled={pesoIncompleto} style={{ flex: 1 }} onClick={() => cambiarEtapa(2)}>
                         Cerrar P1 y Avanzar al P2 <IonIcon icon={arrowForwardOutline} slot="end" />
