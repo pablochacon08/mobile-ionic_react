@@ -16,6 +16,7 @@ import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion, Categor
 import { useEscalas } from '../context/EscalasContext';
 import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEtiquetaEscala, generarMensajeAtencion, obtenerProgresoEtapas } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
+import CampoNota from '../components/CampoNota';
 import './Tab1.css';
 
 const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
@@ -203,55 +204,7 @@ const EstadoVacio = ({ onCrear }: { onCrear: () => void }) => (
   </div>
 );
 
-interface CampoNotaProps {
-  value: number;
-  onChange: (valor: number) => void;
-  max?: number;
-  min?: number;
-  ultimoCampo?: boolean;
-  readonly?: boolean;
-  style?: React.CSSProperties;
-  campoId?: string;
-  siguienteId?: string;
-  refsMap?: React.MutableRefObject<Record<string, any>>;
-}
-
-const CampoNota: React.FC<CampoNotaProps> = ({ value, onChange, max = 100, min = 0, ultimoCampo, readonly, style, campoId, siguienteId, refsMap }) => {
-  const seleccionarAlEnfocar = async (e: any) => {
-    try {
-      const nativeInput = await e.target.getInputElement();
-      nativeInput.select();
-    } catch { /* en desktop sin soporte, simplemente no selecciona */ }
-  };
-
-  const manejarTecla = async (e: React.KeyboardEvent, elemento: any) => {
-    if (e.key !== 'Enter') return;
-    if (siguienteId && refsMap?.current[siguienteId]) {
-      refsMap.current[siguienteId].setFocus();
-    } else {
-      const nativeInput = await elemento?.getInputElement();
-      nativeInput?.blur();
-    }
-  };
-
-  return (
-    <IonInput
-      ref={el => { if (campoId && refsMap) refsMap.current[campoId] = el; }}
-      type="number"
-      inputmode="decimal"
-      enterkeyhint={ultimoCampo ? 'done' : 'next'}
-      readonly={readonly}
-      value={value}
-      onIonFocus={seleccionarAlEnfocar}
-      onKeyDown={e => manejarTecla(e, refsMap?.current[campoId ?? ''])}
-      onIonChange={e => {
-        const parsed = parseFloat(e.detail.value!);
-        onChange(isNaN(parsed) ? 0 : clamp(parsed, min, max));
-      }}
-      style={style}
-    />
-  );
-};
+// CampoNota ahora vive en components/CampoNota.tsx (importado arriba) para reutilizarse en Tab2 y Tab3
 
 const Tab1: React.FC = () => {
   const { materias, cargando, rachaDias, agregarMateria, actualizarMateria, eliminarMateria, restaurarMateria, recargarMaterias } = useMaterias();
