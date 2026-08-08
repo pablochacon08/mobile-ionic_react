@@ -5,7 +5,7 @@ import {
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
   IonSpinner, IonToast, useIonAlert, IonItemSliding, IonItemOptions, IonItemOption
 } from '@ionic/react';
-import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
@@ -93,6 +93,9 @@ const Tab1: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [mostrarToast, setMostrarToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState('');
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editNombre, setEditNombre] = useState('');
+  const [editIcono, setEditIcono] = useState('');
   const celebratedRef = useRef<Record<string, boolean>>({});
   const slidingRefs = useRef<Record<string, any>>({});
 
@@ -131,6 +134,24 @@ const Tab1: React.FC = () => {
     setNuevoIcono(iconosDisponibles[0].clave);
     setIsAddMateriaOpen(false);
     setMensajeToast('Materia creada correctamente');
+    setMostrarToast(true);
+    vibrar('ligero');
+  };
+
+  const abrirEditarMateria = () => {
+    if (!materiaSeleccionada) return;
+    setEditNombre(materiaSeleccionada.nombre);
+    setEditIcono(materiaSeleccionada.icono || 'school');
+    setIsEditOpen(true);
+  };
+
+  const guardarEdicionMateria = () => {
+    if (!materiaSeleccionada || !editNombre.trim()) return;
+    const actualizada = { ...materiaSeleccionada, nombre: editNombre.trim(), icono: editIcono };
+    setMateriaSeleccionada(actualizada);
+    actualizarMateria(actualizada);
+    setIsEditOpen(false);
+    setMensajeToast('Materia actualizada');
     setMostrarToast(true);
     vibrar('ligero');
   };
@@ -396,9 +417,10 @@ const Tab1: React.FC = () => {
               <IonContent>
                 <div style={{ background: `linear-gradient(135deg, var(--ion-color-${materiaSeleccionada.color}), var(--ion-color-${materiaSeleccionada.color}-shade))`, padding: '30px 20px 20px', color: 'var(--ion-color-primary-contrast)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <IonIcon icon={obtenerIcono(materiaSeleccionada.icono || 'school')} style={{ fontSize: '1.8rem' }} />
                       <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.6rem' }}>{materiaSeleccionada.nombre}</h1>
+                      <IonIcon icon={createOutline} style={{ fontSize: '1.15rem', cursor: 'pointer', opacity: 0.75 }} onClick={abrirEditarMateria} />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <IonIcon icon={shareOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={compartirMateria} />
@@ -569,6 +591,35 @@ const Tab1: React.FC = () => {
               </IonContent>
             );
           })()}
+        </IonModal>
+
+        <IonModal isOpen={isEditOpen} initialBreakpoint={0.55} breakpoints={[0, 0.55]} onDidDismiss={() => setIsEditOpen(false)}>
+          <IonContent className="ion-padding">
+            <h2 style={{fontWeight:'800', marginTop:'15px', color: 'var(--ion-text-color)'}}>Editar Asignatura</h2>
+            <IonItem className="ion-margin-top" color="transparent" lines="full">
+              <IonLabel position="stacked" color="medium">Nombre de la materia</IonLabel>
+              <IonInput value={editNombre} onIonChange={e => setEditNombre(e.detail.value ?? '')} style={{ fontWeight: '600', marginTop: '6px' }} />
+            </IonItem>
+
+            <p style={{ marginTop: '20px', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Ícono</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {iconosDisponibles.map(op => (
+                <button
+                  key={op.clave}
+                  onClick={() => { setEditIcono(op.clave); vibrar('ligero'); }}
+                  style={{
+                    width: '48px', height: '48px', borderRadius: '12px', border: 'none',
+                    background: editIcono === op.clave ? 'var(--ion-color-primary)' : 'var(--ion-color-step-100)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <IonIcon icon={op.icono} style={{ fontSize: '1.4rem', color: editIcono === op.clave ? 'var(--ion-color-primary-contrast)' : 'var(--ion-text-color)' }} />
+                </button>
+              ))}
+            </div>
+
+            <IonButton expand="block" style={{ marginTop: '30px', borderRadius: '8px', fontWeight: 'bold' }} onClick={guardarEdicionMateria}>Guardar Cambios</IonButton>
+          </IonContent>
         </IonModal>
 
         <IonModal isOpen={isAddMateriaOpen} initialBreakpoint={0.55} breakpoints={[0, 0.55]} onDidDismiss={() => setIsAddMateriaOpen(false)}>
