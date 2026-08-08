@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, IonCardContent,
-  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote, IonSpinner
+  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote, IonSpinner, IonButton
 } from '@ionic/react';
-import { warningOutline, checkmarkCircleOutline, flaskOutline } from 'ionicons/icons';
+import { warningOutline, checkmarkCircleOutline, flaskOutline, sparklesOutline, refreshOutline } from 'ionicons/icons';
 import { useMaterias, Categoria } from '../context/MateriasContext';
 import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas } from '../utils/calculos';
 import { obtenerIcono } from '../utils/iconos';
+
+const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
 
 const Tab2: React.FC = () => {
   const { materias, cargando } = useMaterias();
@@ -32,6 +34,16 @@ const Tab2: React.FC = () => {
     const materiaSimulada = { ...materia, [key]: listaSimulada };
     return calcularEstadisticas(materiaSimulada);
   }, [materia, simulacion]);
+
+  const usarNotaNecesaria = () => {
+    if (!materia || !statsReales) return;
+    const valor = clamp(Number(statsReales.notaNecesaria.toFixed(1)), 0, 100);
+    const nuevaSimulacion: Record<string, number> = {};
+    statsReales.listaActiva.forEach(cat => { nuevaSimulacion[cat.id] = valor; });
+    setSimulacion(nuevaSimulacion);
+  };
+
+  const limpiarSimulacion = () => setSimulacion({});
 
   if (cargando) {
     return (
@@ -74,6 +86,11 @@ const Tab2: React.FC = () => {
   const tituloEtapa = materia.etapa === 1 ? 'Primer Parcial' : materia.etapa === 2 ? 'Segundo Parcial' : 'Componente Práctico';
   const hayCambiosSimulados = Object.keys(simulacion).length > 0;
   const alcanzaMeta = statsSimulados.acumuladoGlobal >= materia.notaDeseada;
+
+  const yaAlcanzada = statsReales.acumuladoGlobal >= materia.notaDeseada;
+  const sinPesoRestante = statsReales.pesoGlobalRestante <= 0;
+  const metaInalcanzable = statsReales.notaNecesaria > 100;
+  const mostrarBotonNotaNecesaria = !yaAlcanzada && !sinPesoRestante && !metaInalcanzable;
 
   return (
     <IonPage>
@@ -132,10 +149,24 @@ const Tab2: React.FC = () => {
           </IonCardContent>
         </IonCard>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '25px 0 12px 5px' }}>
-          <IonIcon icon={flaskOutline} color="medium" style={{ fontSize: '1.1rem' }} />
-          <IonText color="medium"><p style={{ margin: 0, fontSize: '0.85rem' }}>Simula notas para <strong style={{ color: 'var(--ion-text-color)' }}>{tituloEtapa}</strong> sin guardarlas</p></IonText>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', margin: '25px 0 12px 5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IonIcon icon={flaskOutline} color="medium" style={{ fontSize: '1.1rem' }} />
+            <IonText color="medium"><p style={{ margin: 0, fontSize: '0.85rem' }}>Simula notas para <strong style={{ color: 'var(--ion-text-color)' }}>{tituloEtapa}</strong> sin guardarlas</p></IonText>
+          </div>
+          {hayCambiosSimulados && (
+            <IonButton fill="clear" size="small" color="medium" onClick={limpiarSimulacion} style={{ '--padding-start': '6px', '--padding-end': '6px' }}>
+              <IonIcon icon={refreshOutline} slot="icon-only" style={{ fontSize: '1rem' }} />
+            </IonButton>
+          )}
         </div>
+
+        {mostrarBotonNotaNecesaria && (
+          <IonButton expand="block" fill="outline" color={materia.color} onClick={usarNotaNecesaria} style={{ marginBottom: '16px', fontWeight: '700' }}>
+            <IonIcon icon={sparklesOutline} slot="start" />
+            Usar nota necesaria ({statsReales.notaNecesaria.toFixed(1)})
+          </IonButton>
+        )}
 
         {statsReales.listaActiva.map((cat) => {
           const notaReal = calcularNotaDeCategoria(cat);
@@ -150,6 +181,7 @@ const Tab2: React.FC = () => {
                 </IonLabel>
                 <IonInput
                   type="number"
+                  inputmode="decimal"
                   placeholder={notaReal.toFixed(0)}
                   value={valorSimulado ?? ''}
                   onIonChange={e => {
@@ -157,7 +189,7 @@ const Tab2: React.FC = () => {
                     setSimulacion(prev => {
                       const copia = { ...prev };
                       if (!val) delete copia[cat.id];
-                      else copia[cat.id] = parseFloat(val) || 0;
+                      else copia[cat.id] = clamp(parseFloat(val) || 0, 0, 100);
                       return copia;
                     });
                   }}

@@ -66,8 +66,9 @@ interface MateriasContextType {
   cargando: boolean;
   setMaterias: React.Dispatch<React.SetStateAction<Materia[]>>;
   actualizarMateria: (materiaActualizada: Materia) => void;
-  agregarMateria: (nombre: string, icono?: string) => void;
-  eliminarMateria: (id: string) => void;
+  agregarMateria: (nombre: string, icono?: string) => Materia;
+  eliminarMateria: (id: string) => Materia | undefined;
+  restaurarMateria: (materia: Materia, indiceOriginal?: number) => void;
 }
 
 const MateriasContext = createContext<MateriasContextType | undefined>(undefined);
@@ -113,29 +114,40 @@ export const MateriasProvider: React.FC<{ children: ReactNode }> = ({ children }
     setMaterias(prev => prev.map(m => m.id === materiaActualizada.id ? materiaActualizada : m));
   };
 
-  const agregarMateria = (nombre: string, icono: string = 'school') => {
-    if (!nombre.trim()) return;
+  const agregarMateria = (nombre: string, icono: string = 'school'): Materia => {
+    const color = ionicColors[materias.length % ionicColors.length];
+    const nuevaMateria: Materia = {
+      id: Date.now().toString(),
+      nombre,
+      color,
+      icono,
+      notaDeseada: 70, etapa: 1, pesoTeorico: 70, pesoPractico: 30,
+      categoriasP1: [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }],
+      categoriasP2: [], categoriasPractico: []
+    };
+    setMaterias(prev => [...prev, nuevaMateria]);
+    return nuevaMateria;
+  };
+
+  const eliminarMateria = (id: string): Materia | undefined => {
+    const materiaEliminada = materias.find(m => m.id === id);
+    setMaterias(prev => prev.filter(m => m.id !== id));
+    return materiaEliminada;
+  };
+
+  const restaurarMateria = (materia: Materia, indiceOriginal?: number) => {
     setMaterias(prev => {
-      const color = ionicColors[prev.length % ionicColors.length];
-      const nuevaMateria: Materia = {
-        id: Date.now().toString(),
-        nombre,
-        color,
-        icono,
-        notaDeseada: 70, etapa: 1, pesoTeorico: 70, pesoPractico: 30,
-        categoriasP1: [{ id: 'c1', nombre: 'Componente 1', peso: 100, notaGlobalRapida: 0, subActividades: [] }],
-        categoriasP2: [], categoriasPractico: []
-      };
-      return [...prev, nuevaMateria];
+      if (indiceOriginal === undefined || indiceOriginal >= prev.length) {
+        return [...prev, materia];
+      }
+      const copia = [...prev];
+      copia.splice(indiceOriginal, 0, materia);
+      return copia;
     });
   };
 
-  const eliminarMateria = (id: string) => {
-    setMaterias(prev => prev.filter(m => m.id !== id));
-  };
-
   return (
-    <MateriasContext.Provider value={{ materias, cargando, setMaterias, actualizarMateria, agregarMateria, eliminarMateria }}>
+    <MateriasContext.Provider value={{ materias, cargando, setMaterias, actualizarMateria, agregarMateria, eliminarMateria, restaurarMateria }}>
       {children}
     </MateriasContext.Provider>
   );
