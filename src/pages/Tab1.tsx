@@ -15,6 +15,8 @@ import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas, obtenerEti
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import './Tab1.css';
 
+const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
+
 const vibrar = async (tipo: 'ligero' | 'medio' | 'exito') => {
   try {
     if (tipo === 'ligero') await Haptics.impact({ style: ImpactStyle.Light });
@@ -92,6 +94,13 @@ const Tab1: React.FC = () => {
   const [mostrarToast, setMostrarToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState('');
   const celebratedRef = useRef<Record<string, boolean>>({});
+  const slidingRefs = useRef<Record<string, any>>({});
+
+  const cerrarTodosSliding = () => {
+    Object.values(slidingRefs.current).forEach((ref: any) => {
+      try { ref?.close(); } catch (e) { /* ignorar */ }
+    });
+  };
 
   const materiasConStats = useMemo(() => {
     return materias.map(m => ({ materia: m, stats: calcularEstadisticas(m) }));
@@ -126,7 +135,11 @@ const Tab1: React.FC = () => {
     vibrar('ligero');
   };
 
-  // Reutilizable: eliminar con confirmación, ya sea desde el modal de detalle o desde el deslizar
+  const solicitarEliminarDesdeSwipe = (materia: Materia) => {
+    slidingRefs.current[materia.id]?.close();
+    eliminarConConfirmacion(materia, false);
+  };
+
   const eliminarConConfirmacion = (materia: Materia, cerrarModalDespues: boolean) => {
     presentAlert({
       header: 'Eliminar materia',
@@ -146,6 +159,12 @@ const Tab1: React.FC = () => {
         }
       ]
     });
+  };
+
+  const abrirDetalleMateria = (materia: Materia) => {
+    cerrarTodosSliding();
+    setMateriaSeleccionada(materia);
+    setIsDetailOpen(true);
   };
 
   const compartirMateria = async () => {
@@ -193,7 +212,9 @@ const Tab1: React.FC = () => {
     if (!materiaSeleccionada) return;
     const key = getActiveKey(materiaSeleccionada.etapa);
     const lista = materiaSeleccionada[key] as Categoria[];
-    actualizarMateriaActual(key, lista.map(cat => cat.id === idCat ? { ...cat, [campo]: valor } : cat));
+    let valorFinal = valor;
+    if (campo === 'peso' || campo === 'notaGlobalRapida') valorFinal = clamp(valor, 0, 100);
+    actualizarMateriaActual(key, lista.map(cat => cat.id === idCat ? { ...cat, [campo]: valorFinal } : cat));
   };
 
   const eliminarCategoria = (idCat: string) => {
@@ -219,7 +240,18 @@ const Tab1: React.FC = () => {
 
     actualizarMateriaActual(key, lista.map(cat => {
       if (cat.id !== idCat) return cat;
-      const nuevasSubs = cat.subActividades.map(sub => sub.id === idSub ? { ...sub, [campo]: valor } : sub);
+      const nuevasSubs = cat.subActividades.map(sub => {
+        if (sub.id !== idSub) return sub;
+        if (campo === 'notaMaxima') {
+          const nuevoMax = Math.max(0, valor as number);
+          return { ...sub, notaMaxima: nuevoMax, notaObtenida: Math.min(sub.notaObtenida, nuevoMax) };
+        }
+        if (campo === 'notaObtenida') {
+          const nuevoObtenido = clamp(valor as number, 0, sub.notaMaxima || 0);
+          return { ...sub, notaObtenida: nuevoObtenido };
+        }
+        return { ...sub, [campo]: valor };
+      });
       return { ...cat, subActividades: nuevasSubs };
     }));
   };
@@ -299,11 +331,16 @@ const Tab1: React.FC = () => {
 
             <IonList style={{ background: 'transparent' }}>
               {materiasOrdenadas.map(({ materia, stats }, index) => (
-                <IonItemSliding key={materia.id} className="tarjeta-materia" style={{ animationDelay: `${index * 60}ms`, marginBottom: '14px', borderRadius: '14px', overflow: 'hidden' }}>
+                <IonItemSliding
+                  key={materia.id}
+                  ref={el => { slidingRefs.current[materia.id] = el; }}
+                  className="tarjeta-materia"
+                  style={{ animationDelay: `${index * 60}ms`, marginBottom: '14px', borderRadius: '14px', overflow: 'hidden' }}
+                >
                   <IonItem
                     lines="none"
                     color="transparent"
-                    onClick={() => { setMateriaSeleccionada(materia); setIsDetailOpen(true); }}
+                    onClick={() => abrirDetalleMateria(materia)}
                     style={{ '--background': 'var(--ion-card-background)', '--padding-start': '14px', '--padding-end': '14px', '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: '14px' } as any}
                   >
                     <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
@@ -316,7 +353,7 @@ const Tab1: React.FC = () => {
                     <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
                   </IonItem>
                   <IonItemOptions side="end">
-                    <IonItemOption color="danger" onClick={() => eliminarConConfirmacion(materia, false)}>
+                    <IonItemOption color="danger" onClick={() => solicitarEliminarDesdeSwipe(materia)}>
                       <IonIcon icon={trashOutline} slot="icon-only" />
                     </IonItemOption>
                   </IonItemOptions>
@@ -327,7 +364,7 @@ const Tab1: React.FC = () => {
         )}
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '20px', marginRight: '10px' }}>
-          <IonFabButton color="primary" onClick={() => setIsAddMateriaOpen(true)}><IonIcon icon={add} /></IonFabButton>
+          <IonFabButton color="primary" onClick={() => { cerrarTodosSliding(); setIsAddMateriaOpen(true); }}><IonIcon icon={add} /></IonFabButton>
         </IonFab>
 
         <IonToast
@@ -344,6 +381,8 @@ const Tab1: React.FC = () => {
             const stats = calcularEstadisticas(materiaSeleccionada);
             const tituloEtapa = materiaSeleccionada.etapa === 1 ? 'Primer Parcial' : materiaSeleccionada.etapa === 2 ? 'Segundo Parcial' : 'Componente Práctico';
             const etiquetaEscala = obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas);
+            const pesoIncompleto = stats.pesoActivoCargado !== 100;
+            const sumaPesosGlobales = materiaSeleccionada.pesoTeorico + materiaSeleccionada.pesoPractico;
 
             if (stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada && !celebratedRef.current[materiaSeleccionada.id]) {
               celebratedRef.current[materiaSeleccionada.id] = true;
@@ -372,7 +411,7 @@ const Tab1: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Meta Final</p>
-                        <IonInput type="number" value={materiaSeleccionada.notaDeseada} onIonChange={e => actualizarMateriaActual('notaDeseada', parseFloat(e.detail.value!) || 0)} style={{ fontWeight: '800', fontSize: '1.6rem', color: `var(--ion-color-${materiaSeleccionada.color})`, textAlign: 'center' }} />
+                        <IonInput type="number" value={materiaSeleccionada.notaDeseada} onIonChange={e => actualizarMateriaActual('notaDeseada', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ fontWeight: '800', fontSize: '1.6rem', color: `var(--ion-color-${materiaSeleccionada.color})`, textAlign: 'center' }} />
                       </div>
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Nota Global</p>
@@ -401,10 +440,15 @@ const Tab1: React.FC = () => {
                     </div>
                     <IonItem lines="none" color="transparent">
                       <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>% Teórico (P1 + P2)</IonLabel>
-                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoTeorico} onIonChange={e => actualizarMateriaActual('pesoTeorico', parseFloat(e.detail.value!) || 0)} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
+                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoTeorico} onIonChange={e => actualizarMateriaActual('pesoTeorico', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
                       <IonLabel color="medium" style={{ fontSize: '0.85rem', marginLeft: '15px' }}>% Práctico</IonLabel>
-                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoPractico} onIonChange={e => actualizarMateriaActual('pesoPractico', parseFloat(e.detail.value!) || 0)} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
+                      <IonInput type="number" slot="end" value={materiaSeleccionada.pesoPractico} onIonChange={e => actualizarMateriaActual('pesoPractico', clamp(parseFloat(e.detail.value!) || 0, 0, 100))} style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-150)', borderRadius: '6px', fontWeight: 'bold' }} />
                     </IonItem>
+                    {sumaPesosGlobales !== 100 && (
+                      <div style={{ padding: '8px 15px 12px', fontSize: '0.75rem', color: 'var(--ion-color-danger)', fontWeight: '600' }}>
+                        ⚠️ Teórico + Práctico suman {sumaPesosGlobales}%, debe ser 100%
+                      </div>
+                    )}
                   </IonCard>
 
                   {materiaSeleccionada.etapa > 1 && (
@@ -490,20 +534,23 @@ const Tab1: React.FC = () => {
                     <IonIcon icon={addCircleOutline} slot="start" /> NUEVO COMPONENTE
                   </IonButton>
 
-                  {stats.pesoActivoCargado > 100 && (
+                  {pesoIncompleto && (
                     <div style={{ background: 'rgba(255, 73, 97, 0.1)', color: 'var(--ion-color-danger)', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', textAlign: 'center', marginTop: '10px' }}>
-                      ⚠️ El peso de este bloque suma {stats.pesoActivoCargado}%. Debe ser 100%.
+                      ⚠️ Los pesos de {tituloEtapa.toLowerCase()} suman {stats.pesoActivoCargado}%.
+                      {stats.pesoActivoCargado < 100
+                        ? ` Faltan ${(100 - stats.pesoActivoCargado).toFixed(0)}% por asignar.`
+                        : ` Sobran ${(stats.pesoActivoCargado - 100).toFixed(0)}%.`}
                     </div>
                   )}
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '30px', padding: '15px 0', borderTop: '1px dashed var(--ion-color-step-150)' }}>
                     {materiaSeleccionada.etapa === 1 && (
-                      <IonButton expand="block" fill="outline" color="medium" style={{ flex: 1 }} onClick={() => cambiarEtapa(2)}>
+                      <IonButton expand="block" fill="outline" color="medium" disabled={pesoIncompleto} style={{ flex: 1 }} onClick={() => cambiarEtapa(2)}>
                         Cerrar P1 y Avanzar al P2 <IonIcon icon={arrowForwardOutline} slot="end" />
                       </IonButton>
                     )}
                     {materiaSeleccionada.etapa === 2 && (
-                      <IonButton expand="block" fill="outline" color="medium" style={{ flex: 1 }} onClick={() => cambiarEtapa(3)}>
+                      <IonButton expand="block" fill="outline" color="medium" disabled={pesoIncompleto} style={{ flex: 1 }} onClick={() => cambiarEtapa(3)}>
                         Cerrar P2 y Avanzar al Práctico <IonIcon icon={arrowForwardOutline} slot="end" />
                       </IonButton>
                     )}
@@ -513,6 +560,11 @@ const Tab1: React.FC = () => {
                       </IonButton>
                     )}
                   </div>
+                  {pesoIncompleto && (materiaSeleccionada.etapa === 1 || materiaSeleccionada.etapa === 2) && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)', textAlign: 'center', marginTop: '-8px' }}>
+                      Ajusta los pesos a 100% para poder avanzar de etapa
+                    </p>
+                  )}
                 </div>
               </IonContent>
             );
