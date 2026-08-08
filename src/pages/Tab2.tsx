@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, IonCardContent,
-  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote
+  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote, IonSpinner
 } from '@ionic/react';
 import { warningOutline, checkmarkCircleOutline, flaskOutline } from 'ionicons/icons';
 import { useMaterias, Categoria } from '../context/MateriasContext';
@@ -9,7 +9,7 @@ import { getActiveKey, calcularNotaDeCategoria, calcularEstadisticas } from '../
 import { obtenerIcono } from '../utils/iconos';
 
 const Tab2: React.FC = () => {
-  const { materias } = useMaterias();
+  const { materias, cargando } = useMaterias();
   const [materiaId, setMateriaId] = useState<string>(materias[0]?.id ?? '');
   const [simulacion, setSimulacion] = useState<Record<string, number>>({});
 
@@ -32,6 +32,24 @@ const Tab2: React.FC = () => {
     const materiaSimulada = { ...materia, [key]: listaSimulada };
     return calcularEstadisticas(materiaSimulada);
   }, [materia, simulacion]);
+
+  if (cargando) {
+    return (
+      <IonPage>
+        <IonHeader className="ion-no-border">
+          <IonToolbar>
+            <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen className="ion-padding">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px' }}>
+            <IonSpinner name="crescent" style={{ width: '36px', height: '36px', color: 'var(--ion-color-primary)' }} />
+            <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.85rem', marginTop: '12px' }}>Cargando tus materias...</p>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   if (!materia || !statsReales || !statsSimulados) {
     return (

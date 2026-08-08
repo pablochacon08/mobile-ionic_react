@@ -3,9 +3,10 @@ import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard,
   IonItem, IonLabel, IonList, IonFab, IonFabButton, IonIcon,
   IonModal, IonButton, IonInput, IonAccordionGroup, IonAccordion, IonListHeader,
-  IonSpinner, IonToast, useIonAlert, IonItemSliding, IonItemOptions, IonItemOption
+  IonSpinner, IonToast, useIonAlert, IonItemSliding, IonItemOptions, IonItemOption,
+  IonActionSheet
 } from '@ionic/react';
-import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline } from 'ionicons/icons';
+import { add, close, addCircleOutline, arrowForwardOutline, arrowUndoOutline, trashOutline, schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, eyeOutline } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
@@ -96,13 +97,38 @@ const Tab1: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editNombre, setEditNombre] = useState('');
   const [editIcono, setEditIcono] = useState('');
+  const [accionesPara, setAccionesPara] = useState<Materia | null>(null);
   const celebratedRef = useRef<Record<string, boolean>>({});
   const slidingRefs = useRef<Record<string, any>>({});
+  const longPressTimer = useRef<any>(null);
+  const longPressActivado = useRef(false);
 
   const cerrarTodosSliding = () => {
     Object.values(slidingRefs.current).forEach((ref: any) => {
       try { ref?.close(); } catch (e) { /* ignorar */ }
     });
+  };
+
+  const iniciarPresionLarga = (materia: Materia) => {
+    longPressActivado.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressActivado.current = true;
+      vibrar('medio');
+      cerrarTodosSliding();
+      setAccionesPara(materia);
+    }, 500);
+  };
+
+  const cancelarPresionLarga = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  const manejarClickMateria = (materia: Materia) => {
+    if (longPressActivado.current) {
+      longPressActivado.current = false;
+      return;
+    }
+    abrirDetalleMateria(materia);
   };
 
   const materiasConStats = useMemo(() => {
@@ -138,10 +164,10 @@ const Tab1: React.FC = () => {
     vibrar('ligero');
   };
 
-  const abrirEditarMateria = () => {
-    if (!materiaSeleccionada) return;
-    setEditNombre(materiaSeleccionada.nombre);
-    setEditIcono(materiaSeleccionada.icono || 'school');
+  const abrirEditarMateria = (materia: Materia) => {
+    setMateriaSeleccionada(materia);
+    setEditNombre(materia.nombre);
+    setEditIcono(materia.icono || 'school');
     setIsEditOpen(true);
   };
 
@@ -188,17 +214,16 @@ const Tab1: React.FC = () => {
     setIsDetailOpen(true);
   };
 
-  const compartirMateria = async () => {
-    if (!materiaSeleccionada) return;
-    const stats = calcularEstadisticas(materiaSeleccionada);
+  const compartirMateria = async (materia: Materia) => {
+    const stats = calcularEstadisticas(materia);
     const etiqueta = obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas);
 
     const lineas = [
-      `📊 ${materiaSeleccionada.nombre}`,
+      `📊 ${materia.nombre}`,
       `Nota acumulada: ${stats.acumuladoGlobal.toFixed(1)}${etiqueta ? ` (${etiqueta})` : ''}`,
-      `Meta: ${materiaSeleccionada.notaDeseada}`,
+      `Meta: ${materia.notaDeseada}`,
     ];
-    if (stats.acumuladoGlobal < materiaSeleccionada.notaDeseada) {
+    if (stats.acumuladoGlobal < materia.notaDeseada) {
       lineas.push(`Necesito ${stats.notaNecesaria.toFixed(1)}/100 en lo que falta para alcanzar mi meta`);
     } else {
       lineas.push('¡Meta alcanzada! 🎉');
@@ -207,7 +232,7 @@ const Tab1: React.FC = () => {
 
     try {
       await Share.share({
-        title: materiaSeleccionada.nombre,
+        title: materia.nombre,
         text: lineas.join('\n')
       });
     } catch (error) {
@@ -348,7 +373,7 @@ const Tab1: React.FC = () => {
               </div>
             </IonCard>
 
-            <p style={{ margin: '0 0 8px 5px', fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Desliza una materia hacia la izquierda para eliminarla</p>
+            <p style={{ margin: '0 0 8px 5px', fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>Desliza para eliminar, o mantén presionada para más opciones</p>
 
             <IonList style={{ background: 'transparent' }}>
               {materiasOrdenadas.map(({ materia, stats }, index) => (
@@ -361,7 +386,10 @@ const Tab1: React.FC = () => {
                   <IonItem
                     lines="none"
                     color="transparent"
-                    onClick={() => abrirDetalleMateria(materia)}
+                    onClick={() => manejarClickMateria(materia)}
+                    onPointerDown={() => iniciarPresionLarga(materia)}
+                    onPointerUp={cancelarPresionLarga}
+                    onPointerLeave={cancelarPresionLarga}
                     style={{ '--background': 'var(--ion-card-background)', '--padding-start': '14px', '--padding-end': '14px', '--padding-top': '10px', '--padding-bottom': '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderRadius: '14px' } as any}
                   >
                     <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
@@ -397,6 +425,19 @@ const Tab1: React.FC = () => {
           onDidDismiss={() => setMostrarToast(false)}
         />
 
+        <IonActionSheet
+          isOpen={!!accionesPara}
+          onDidDismiss={() => setAccionesPara(null)}
+          header={accionesPara?.nombre}
+          buttons={accionesPara ? [
+            { text: 'Ver detalle', icon: eyeOutline, handler: () => abrirDetalleMateria(accionesPara) },
+            { text: 'Editar', icon: createOutline, handler: () => abrirEditarMateria(accionesPara) },
+            { text: 'Compartir', icon: shareOutline, handler: () => compartirMateria(accionesPara) },
+            { text: 'Eliminar', icon: trashOutline, role: 'destructive', handler: () => eliminarConConfirmacion(accionesPara, false) },
+            { text: 'Cancelar', role: 'cancel' }
+          ] : []}
+        />
+
         <IonModal isOpen={isDetailOpen} onDidDismiss={() => setIsDetailOpen(false)}>
           {materiaSeleccionada && (() => {
             const stats = calcularEstadisticas(materiaSeleccionada);
@@ -420,10 +461,10 @@ const Tab1: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <IonIcon icon={obtenerIcono(materiaSeleccionada.icono || 'school')} style={{ fontSize: '1.8rem' }} />
                       <h1 style={{ margin: 0, fontWeight: '800', fontSize: '1.6rem' }}>{materiaSeleccionada.nombre}</h1>
-                      <IonIcon icon={createOutline} style={{ fontSize: '1.15rem', cursor: 'pointer', opacity: 0.75 }} onClick={abrirEditarMateria} />
+                      <IonIcon icon={createOutline} style={{ fontSize: '1.15rem', cursor: 'pointer', opacity: 0.75 }} onClick={() => abrirEditarMateria(materiaSeleccionada)} />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <IonIcon icon={shareOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={compartirMateria} />
+                      <IonIcon icon={shareOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => compartirMateria(materiaSeleccionada)} />
                       <IonIcon icon={trashOutline} style={{ fontSize: '1.4rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => eliminarConConfirmacion(materiaSeleccionada, true)} />
                       <IonIcon icon={close} style={{ fontSize: '2rem', cursor: 'pointer', opacity: 0.8 }} onClick={() => setIsDetailOpen(false)} />
                     </div>
