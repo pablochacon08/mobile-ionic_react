@@ -7,6 +7,7 @@ import {
 import { addCircleOutline, trashOutline, colorPaletteOutline, sunnyOutline, moonOutline, phonePortraitOutline, warningOutline } from 'ionicons/icons';
 import { useEscalas, RangoEscala } from '../context/EscalasContext';
 import { useTema, ModoTema } from '../context/TemaContext';
+import CampoNota from '../components/CampoNota';
 
 const detectarSuperposiciones = (escalas: RangoEscala[]): string[] => {
   const conflictos: string[] = [];
@@ -92,7 +93,7 @@ const Tab3: React.FC = () => {
         </div>
 
         {conflictos.length > 0 && (
-          <div style={{ background: 'rgba(255, 73, 97, 0.1)', borderRadius: '12px', padding: '12px 15px', marginBottom: '14px' }}>
+          <div style={{ background: 'rgba(var(--ion-color-danger-rgb), 0.1)', borderRadius: '12px', padding: '12px 15px', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
               <IonIcon icon={warningOutline} style={{ color: 'var(--ion-color-danger)', fontSize: '1.1rem' }} />
               <span style={{ color: 'var(--ion-color-danger)', fontWeight: '700', fontSize: '0.85rem' }}>Rangos traslapados</span>
@@ -115,17 +116,20 @@ const Tab3: React.FC = () => {
                   placeholder="Etiqueta"
                 />
                 <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <IonInput
-                    type="number"
+                  <CampoNota
                     value={rango.minimo}
-                    onIonChange={e => actualizarRango(rango.id, 'minimo', parseFloat(e.detail.value!) || 0)}
+                    onChange={v => actualizarRango(rango.id, 'minimo', v)}
+                    min={0}
+                    max={100}
                     style={{ width: '48px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '8px', fontWeight: '700' }}
                   />
                   <span style={{ color: 'var(--ion-color-medium)', fontSize: '0.9rem' }}>-</span>
-                  <IonInput
-                    type="number"
+                  <CampoNota
                     value={rango.maximo}
-                    onIonChange={e => actualizarRango(rango.id, 'maximo', parseFloat(e.detail.value!) || 0)}
+                    onChange={v => actualizarRango(rango.id, 'maximo', v)}
+                    min={0}
+                    max={100}
+                    ultimoCampo
                     style={{ width: '48px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '8px', fontWeight: '700' }}
                   />
                   <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.15rem', marginLeft: '6px', cursor: 'pointer', opacity: 0.8 }} onClick={() => eliminarRango(rango.id)} />

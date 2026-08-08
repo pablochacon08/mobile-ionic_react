@@ -22,6 +22,13 @@ const Tab2: React.FC = () => {
     setSimulacion({});
   };
 
+  const seleccionarAlEnfocar = async (e: any) => {
+    try {
+      const nativeInput = await e.target.getInputElement();
+      nativeInput.select();
+    } catch { /* en desktop sin soporte, simplemente no selecciona */ }
+  };
+
   const statsReales = materia ? calcularEstadisticas(materia) : null;
 
   const statsSimulados = useMemo(() => {
@@ -83,7 +90,7 @@ const Tab2: React.FC = () => {
     );
   }
 
-  const tituloEtapa = materia.etapa === 1 ? 'Primer Parcial' : materia.etapa === 2 ? 'Segundo Parcial' : 'Componente Práctico';
+  const tituloEtapa = materia.etapa === 1 ? 'Primer Parcial' : materia.etapa === 2 ? 'Segundo Parcial' : 'Trabajo Práctico';
   const hayCambiosSimulados = Object.keys(simulacion).length > 0;
   const alcanzaMeta = statsSimulados.acumuladoGlobal >= materia.notaDeseada;
 
@@ -134,7 +141,7 @@ const Tab2: React.FC = () => {
                 <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{materia.notaDeseada}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Acumulado Actual</p>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Tu nota actual</p>
                 <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{statsReales.acumuladoGlobal.toFixed(1)}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
@@ -177,13 +184,14 @@ const Tab2: React.FC = () => {
               <IonItem lines="none" color="transparent">
                 <IonLabel>
                   <h3 style={{ fontWeight: '700', fontSize: '0.95rem', margin: '0 0 2px 0' }}>{cat.nombre}</h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--ion-color-medium)', margin: 0 }}>Peso {cat.peso}% • Nota real: {notaReal.toFixed(1)}</p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--ion-color-medium)', margin: 0 }}>Vale {cat.peso}% de tu nota • Nota real: {notaReal.toFixed(1)}</p>
                 </IonLabel>
                 <IonInput
                   type="number"
                   inputmode="decimal"
                   placeholder={notaReal.toFixed(0)}
                   value={valorSimulado ?? ''}
+                  onIonFocus={seleccionarAlEnfocar}
                   onIonChange={e => {
                     const val = e.detail.value;
                     setSimulacion(prev => {
@@ -201,7 +209,7 @@ const Tab2: React.FC = () => {
         })}
 
         <div style={{
-          background: alcanzaMeta ? 'rgba(45, 211, 111, 0.15)' : 'var(--ion-color-step-50)',
+          background: alcanzaMeta ? 'rgba(var(--ion-color-success-rgb), 0.15)' : 'var(--ion-color-step-50)',
           marginTop: '20px', borderRadius: '14px', padding: '20px', textAlign: 'center'
         }}>
           {alcanzaMeta ? (
