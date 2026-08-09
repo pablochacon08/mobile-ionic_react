@@ -755,8 +755,19 @@ const Tab1: React.FC = () => {
     if (!materiaSeleccionada) return null;
     const lista = materiaSeleccionada[seccionKey] as Categoria[];
 
+    const detenerPropagacionNativa = (el: HTMLDivElement | null) => {
+      if (el) {
+        el.onclick = (e) => e.stopPropagation();
+        el.onpointerdown = (e) => e.stopPropagation();
+        el.ontouchstart = (e) => e.stopPropagation();
+      }
+    };
+
     return (
-      <IonAccordionGroup style={{ marginTop: '5px' }}>
+      <IonAccordionGroup 
+        style={{ marginTop: '5px' }}
+        onIonChange={e => e.stopPropagation()} 
+      >
         {lista.map((cat) => {
           const notaCalculada = calcularNotaLocal(cat);
           const tieneSubs = cat.subActividades.length > 0;
@@ -764,7 +775,12 @@ const Tab1: React.FC = () => {
           return (
             <IonAccordion key={cat.id} value={cat.id} style={{ background: 'var(--ion-card-background)', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <IonItem slot="header" color="transparent" lines="none">
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' } as React.CSSProperties & { '--padding-start': string }} onClick={e => e.stopPropagation()}>
+                
+                {/* DIV 1: Usamos la ref nativa aquí */}
+                <div 
+                  ref={detenerPropagacionNativa}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' } as React.CSSProperties & { '--padding-start': string }} 
+                >
                   <IonInput 
                     value={cat.nombre} 
                     onIonChange={e => actualizarCategoria(seccionKey, cat.id, 'nombre', e.detail.value!)} 
@@ -774,7 +790,11 @@ const Tab1: React.FC = () => {
                   {tieneSubs && <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)' }}>{cat.subActividades.length} actividades • Promedio: {notaCalculada.toFixed(1)}/100</p>}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '10px' }} onClick={e => e.stopPropagation()}>
+                {/* DIV 2: Y también usamos la ref nativa aquí */}
+                <div 
+                  ref={detenerPropagacionNativa}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '10px' }} 
+                >
                   <div style={{ textAlign: 'center' }}>
                     <span style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', display: 'block' }}>Nota/100</span>
                     <CampoNota
@@ -793,7 +813,22 @@ const Tab1: React.FC = () => {
                       style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
                     />
                   </div>
-                  <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.2rem', marginLeft: '5px', opacity: 0.8 }} onClick={() => eliminarCategoria(seccionKey, cat.id)} />
+                  
+                  <div
+                    ref={el => {
+                      if (el) {
+                        el.onclick = (e) => {
+                          e.stopPropagation();
+                          eliminarCategoria(seccionKey, cat.id);
+                        };
+                        el.onpointerdown = (e) => e.stopPropagation();
+                        el.ontouchstart = (e) => e.stopPropagation();
+                      }
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', marginLeft: '2px', cursor: 'pointer' }}
+                  >
+                    <IonIcon icon={trashOutline} color="danger" style={{ fontSize: '1.2rem', opacity: 0.8 }} />
+                  </div>
                 </div>
               </IonItem>
 
