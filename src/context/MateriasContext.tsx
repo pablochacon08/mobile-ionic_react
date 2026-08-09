@@ -75,6 +75,32 @@ const materiaPorDefecto: Materia[] = [
     categoriasP2: [],
     categoriasPractico: [],
     historial: []
+  },
+  {
+    id: '2',
+    nombre: 'Estructuras de Datos',
+    color: 'verde',
+    icono: 'school', 
+    notaDeseada: 80,
+    etapa: 2,
+    pesoTeorico: 70,
+    pesoPractico: 30,
+    categoriasP1: [
+      { id: 'c3', nombre: 'Lecciones', peso: 30, notaGlobalRapida: 85, subActividades: [] },
+      { id: 'c4', nombre: 'Examen P1', peso: 70, notaGlobalRapida: 72, subActividades: [] }
+    ],
+    categoriasP2: [
+      { id: 'c5', nombre: 'Talleres', peso: 40, notaGlobalRapida: 90, subActividades: [] }
+    ],
+    categoriasPractico: [
+      { id: 'c6', nombre: 'Proyecto Web', peso: 100, notaGlobalRapida: 80, subActividades: [] }
+    ],
+    historial: [
+      { fecha: '2026-07-15', valor: 45.0 },
+      { fecha: '2026-07-28', valor: 55.5 },
+      { fecha: '2026-08-04', valor: 68.2 },
+      { fecha: '2026-08-09', valor: 75.8 }
+    ]
   }
 ];
 
