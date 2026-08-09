@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonCard, IonCardContent,
-  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote, IonSpinner, IonButton
+  IonItem, IonLabel, IonSelect, IonSelectOption, IonInput, IonIcon, IonText, IonNote, IonSpinner, IonButton, IonRange
 } from '@ionic/react';
 import { warningOutline, checkmarkCircleOutline, flaskOutline, sparklesOutline, refreshOutline } from 'ionicons/icons';
 import { useMaterias, Categoria } from '../context/MateriasContext';
@@ -133,25 +133,49 @@ const Tab2: React.FC = () => {
           </IonItem>
         </IonCard>
 
-        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '16px', boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
+        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '16px', boxShadow: '0 4px 14px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
           <IonCardContent style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', marginBottom: '20px' }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Meta</p>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>Meta</p>
                 <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{materia.notaDeseada}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Tu nota actual</p>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>Tu nota actual</p>
                 <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{statsReales.acumuladoGlobal.toFixed(1)}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>
                   {hayCambiosSimulados ? 'Simulado' : 'Acumulado'}
                 </p>
-                <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: hayCambiosSimulados ? `var(--ion-color-${materia.color})` : 'var(--ion-text-color)' }}>
+                <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: hayCambiosSimulados ? (alcanzaMeta ? 'var(--ion-color-success)' : `var(--ion-color-${materia.color})`) : 'var(--ion-text-color)' }}>
                   {statsSimulados.acumuladoGlobal.toFixed(1)}
                 </p>
               </div>
+            </div>
+
+            {/* TERMÓMETRO VISUAL (GAUGE) */}
+            <div style={{ position: 'relative', height: '14px', background: 'var(--ion-color-step-150)', borderRadius: '10px', overflow: 'hidden' }}>
+              {/* Relleno Dinámico */}
+              <div style={{ 
+                position: 'absolute', top: 0, left: 0, height: '100%', 
+                width: `${Math.min(statsSimulados.acumuladoGlobal, 100)}%`, 
+                background: alcanzaMeta ? 'var(--ion-color-success)' : `var(--ion-color-${materia.color})`, 
+                transition: 'width 0.4s ease, background 0.4s ease', borderRadius: '10px' 
+              }} />
+              
+              {/* Línea de la Meta */}
+              <div style={{ 
+                position: 'absolute', top: 0, left: `${materia.notaDeseada}%`, 
+                height: '100%', width: '4px', background: 'var(--ion-text-color)', 
+                boxShadow: '0 0 4px rgba(0,0,0,0.5)', zIndex: 2
+              }} />
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.65rem', fontWeight: '700', color: 'var(--ion-color-medium)' }}>
+              <span>0</span>
+              <span style={{ position: 'absolute', left: `calc(${materia.notaDeseada}% - 12px)`, color: 'var(--ion-text-color)' }}>META</span>
+              <span>100</span>
             </div>
           </IonCardContent>
         </IonCard>
