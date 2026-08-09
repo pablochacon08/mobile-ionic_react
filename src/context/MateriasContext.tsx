@@ -56,7 +56,7 @@ const materiaPorDefecto: Materia[] = [
   {
     id: '1',
     nombre: 'Sistemas Digitales',
-    color: 'morado',
+    color: 'ambar', 
     icono: 'calculator',
     notaDeseada: 70,
     etapa: 1,
@@ -74,7 +74,12 @@ const materiaPorDefecto: Materia[] = [
     ],
     categoriasP2: [],
     categoriasPractico: [],
-    historial: []
+    historial: [
+      { fecha: '2026-07-20', valor: 10.5 },
+      { fecha: '2026-07-28', valor: 18.0 },
+      { fecha: '2026-08-05', valor: 23.5 },
+      { fecha: '2026-08-09', valor: 26.3 }
+    ]
   },
   {
     id: '2',
