@@ -1060,11 +1060,41 @@ const Tab1: React.FC = () => {
                       } as any}
                     >
                       <AvatarMateria claveIcono={materia.icono || 'school'} color={materia.color} />
-                      <IonLabel>
-                        <h2 style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: '0 0 2px 0' }}>{materia.nombre}</h2>
-                        <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', margin: 0 }}>
-                          {obtenerEtiquetaEscala(stats.acumuladoGlobal, escalas) ?? 'Global Acumulado'}
+                      <IonLabel style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <h2 style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--ion-text-color)', margin: 0 }}>{materia.nombre}</h2>
+                          
+                          {/* ETIQUETA EMOCIONAL (TAG) */}
+                          {(() => {
+                            let tagTexto = "En camino";
+                            let tagColor = "warning";
+                            if (stats.acumuladoGlobal >= materia.notaDeseada) { tagTexto = "Asegurada"; tagColor = "success"; }
+                            else if (stats.perdidaInclusoConMejoramiento) { tagTexto = "Perdida"; tagColor = "danger"; }
+                            else if (stats.requiereMejoramientoParaPasar) { tagTexto = "En riesgo"; tagColor = "danger"; }
+                            else if (stats.notaNecesaria <= 40) { tagTexto = "A un paso"; tagColor = "success"; }
+
+                            return (
+                              <span style={{ 
+                                background: `var(--ion-color-${tagColor})`, color: `var(--ion-color-${tagColor}-contrast)`, 
+                                padding: '3px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' 
+                              }}>
+                                {tagTexto}
+                              </span>
+                            );
+                          })()}
+                        </div>
+
+                        <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.75rem', margin: '0 0 6px 0', fontWeight: '600' }}>
+                          {100 - stats.pesoGlobalRestante}% evaluado
                         </p>
+
+                        {/* BARRA DE PROGRESO DEL SEMESTRE */}
+                        <div style={{ height: '6px', background: 'var(--ion-color-step-150)', borderRadius: '3px', overflow: 'hidden', width: '90%' }}>
+                          <div style={{ 
+                            height: '100%', width: `${100 - stats.pesoGlobalRestante}%`, 
+                            background: `var(--ion-color-${materia.color})`, borderRadius: '3px', transition: 'width 0.5s ease' 
+                          }} />
+                        </div>
                       </IonLabel>
                       <CircularProgress value={stats.acumuladoGlobal} color={materia.color} />
                     </IonItem>
