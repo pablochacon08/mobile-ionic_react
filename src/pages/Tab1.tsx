@@ -91,20 +91,53 @@ const colorPorRiesgo = (diferencia: number): string => {
 
 const generarMensajeAtencionLocal = (materia: ExtendedMateria, stats: any) => {
     if (!materia || !stats) return null;
+    
     const diferencia = materia.notaDeseada - stats.acumuladoGlobal;
     
+    // 1. Si ya pasó
     if (diferencia <= 0) {
         return { tipo: 'exito', texto: `¡Excelente en ${materia.nombre}! Ya aseguraste tu meta.` };
     }
-    if (stats.notaNecesaria > 100 && !stats.requiereMejoramientoParaPasar) {
-        return { tipo: 'peligro', texto: `${materia.nombre} necesita un milagro (>100 en lo restante)` };
+    
+    // 2. Si ya es imposible incluso con el mejoramiento
+    if (stats.perdidaInclusoConMejoramiento) {
+        return { tipo: 'peligro', texto: `La meta en ${materia.nombre} ya es matemáticamente inalcanzable.` };
     }
-    if (diferencia > 0 && stats.notaNecesaria > 85) {
-        return { tipo: 'peligro', texto: `Alerta en ${materia.nombre}: necesitas > ${stats.notaNecesaria}/100 para aprobar.` };
+    
+    // 3. Si solo le salva el mejoramiento
+    if (stats.requiereMejoramientoParaPasar) {
+        return { tipo: 'peligro', texto: `Atención en ${materia.nombre}: Tu única opción para alcanzar la meta es el examen de Mejoramiento.` };
     }
-    if (diferencia > 0 && stats.notaNecesaria > 70) {
-        return { tipo: 'precaucion', texto: `${materia.nombre} requiere atención (> ${stats.notaNecesaria}/100)` };
+
+    // 4. Identificar qué partes le faltan de forma humana
+    let partesFaltantes = "lo que falta";
+    const faltantes = [];
+    if (stats.faltanteGlobalP1 > 0) faltantes.push('el 1er Parcial');
+    if (stats.faltanteGlobalP2 > 0) faltantes.push('el 2do Parcial');
+    if (stats.faltanteGlobalPr > 0) faltantes.push('el Práctico');
+
+    if (faltantes.length === 1) {
+        partesFaltantes = faltantes[0];
+    } else if (faltantes.length === 2) {
+        partesFaltantes = `${faltantes[0]} y ${faltantes[1]}`;
+    } else if (faltantes.length === 3) {
+        partesFaltantes = "las evaluaciones restantes";
     }
+
+    // 5. Redondear la nota que necesita (para que no salgan decimales raros)
+    const notaReq = Math.max(0, Math.ceil(stats.notaNecesaria));
+
+    // 6. Mensajes según el nivel de riesgo
+    if (notaReq > 100) {
+         return { tipo: 'peligro', texto: `En ${materia.nombre} necesitas una nota irreal (>100) en ${partesFaltantes}. ¡Apunta al Mejoramiento!` };
+    }
+    if (notaReq > 85) {
+        return { tipo: 'peligro', texto: `Alerta en ${materia.nombre}: necesitas promediar mínimo ${notaReq}/100 en ${partesFaltantes}.` };
+    }
+    if (notaReq > 70) {
+        return { tipo: 'precaucion', texto: `${materia.nombre} requiere atención: apunta a más de ${notaReq}/100 en ${partesFaltantes}.` };
+    }
+    
     return null;
 };
 
