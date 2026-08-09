@@ -99,6 +99,23 @@ const Tab2: React.FC = () => {
   const metaInalcanzable = statsReales.notaNecesaria > 100;
   const mostrarBotonNotaNecesaria = !yaAlcanzada && !sinPesoRestante && !metaInalcanzable;
 
+  const aplicarMagiaEnActividad = (cat: Categoria) => {
+    if (!materia || !statsSimulados) return;
+    const pesoEtapa = materia.etapa === 1 || materia.etapa === 2 ? materia.pesoTeorico / 2 : materia.pesoPractico;
+    const pesoGlobalCat = (cat.peso / 100) * (pesoEtapa / 100);
+    
+    const valorSimuladoActual = simulacion[cat.id] || 0;
+    const aporteActual = valorSimuladoActual * pesoGlobalCat;
+    const acumuladoSinEstaCat = statsSimulados.acumuladoGlobal - aporteActual;
+    const faltante = materia.notaDeseada - acumuladoSinEstaCat;
+
+    let notaMagica = 0;
+    if (faltante > 0 && pesoGlobalCat > 0) {
+      notaMagica = Math.ceil(faltante / pesoGlobalCat);
+    }
+    setSimulacion(prev => ({ ...prev, [cat.id]: clamp(notaMagica, 0, 100) }));
+    vibrar('ligero');
+  };
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
@@ -186,10 +203,11 @@ const Tab2: React.FC = () => {
             <IonText color="medium"><p style={{ margin: 0, fontSize: '0.85rem' }}>Simula notas para <strong style={{ color: 'var(--ion-text-color)' }}>{tituloEtapa}</strong> sin guardarlas</p></IonText>
           </div>
           {hayCambiosSimulados && (
-            <IonButton fill="clear" size="small" color="medium" onClick={limpiarSimulacion} style={{ '--padding-start': '6px', '--padding-end': '6px' }}>
-              <IonIcon icon={refreshOutline} slot="icon-only" style={{ fontSize: '1rem' }} />
-            </IonButton>
-          )}
+          <IonButton expand="block" fill="clear" color="danger" onClick={() => { limpiarSimulacion(); vibrar('medio'); }} style={{ marginBottom: '16px', fontWeight: '800' }}>
+            <IonIcon icon={refreshOutline} slot="start" />
+            RESETEAR SIMULACIÓN
+          </IonButton>
+        )}
         </div>
 
         {mostrarBotonNotaNecesaria && (
@@ -201,33 +219,43 @@ const Tab2: React.FC = () => {
 
         {statsReales.listaActiva.map((cat) => {
           const notaReal = calcularNotaDeCategoria(cat);
-          const valorSimulado = simulacion[cat.id];
+          const valorSimulado = simulacion[cat.id] ?? notaReal;
+          const estaAlterado = simulacion[cat.id] !== undefined;
 
           return (
-            <IonCard key={cat.id} style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', margin: '0 0 10px 0', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-              <IonItem lines="none" color="transparent">
-                <IonLabel>
-                  <h3 style={{ fontWeight: '700', fontSize: '0.95rem', margin: '0 0 2px 0' }}>{cat.nombre}</h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--ion-color-medium)', margin: 0 }}>Vale {cat.peso}% de tu nota • Nota real: {notaReal.toFixed(1)}</p>
-                </IonLabel>
-                <IonInput
-                  type="number"
-                  inputmode="decimal"
-                  placeholder={notaReal.toFixed(0)}
-                  value={valorSimulado ?? ''}
-                  onIonFocus={seleccionarAlEnfocar}
-                  onIonChange={e => {
-                    const val = e.detail.value;
-                    setSimulacion(prev => {
-                      const copia = { ...prev };
-                      if (!val) delete copia[cat.id];
-                      else copia[cat.id] = clamp(parseFloat(val) || 0, 0, 100);
-                      return copia;
-                    });
-                  }}
-                  style={{ width: '60px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '8px', fontWeight: '700' }}
-                />
-              </IonItem>
+            <IonCard key={cat.id} style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', margin: '0 0 14px 0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: estaAlterado ? `1px solid var(--ion-color-${materia.color})` : '1px solid transparent' }}>
+              <div style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <h3 style={{ fontWeight: '800', fontSize: '1.05rem', margin: '0 0 4px 0', color: 'var(--ion-text-color)' }}>{cat.nombre}</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)', margin: 0, fontWeight: '600' }}>Peso: {cat.peso}% • Nota Base: {notaReal.toFixed(1)}</p>
+                  </div>
+                  
+                  <IonButton fill="clear" size="small" color="warning" onClick={() => aplicarMagiaEnActividad(cat)} title="Auto-completar nota necesaria aquí">
+                    <IonIcon icon={sparklesOutline} slot="icon-only" style={{ fontSize: '1.4rem' }} />
+                  </IonButton>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
+                  <IonRange 
+                    min={0} max={100} step={1} 
+                    value={valorSimulado} 
+                    color={alcanzaMeta ? 'success' : materia.color}
+                    onIonChange={e => {
+                      const val = e.detail.value as number;
+                      setSimulacion(prev => ({ ...prev, [cat.id]: val }));
+                    }}
+                    style={{ padding: 0, '--bar-background': 'var(--ion-color-step-150)', '--knob-size': '24px' }}
+                  />
+                  <div style={{ 
+                    background: estaAlterado ? `var(--ion-color-${materia.color})` : 'var(--ion-color-step-100)', 
+                    color: estaAlterado ? `var(--ion-color-${materia.color}-contrast)` : 'var(--ion-text-color)',
+                    padding: '6px 12px', borderRadius: '8px', fontWeight: '800', fontSize: '1.1rem', minWidth: '55px', textAlign: 'center', transition: 'all 0.3s ease'
+                  }}>
+                    {valorSimulado.toFixed(0)}
+                  </div>
+                </div>
+              </div>
             </IonCard>
           );
         })}
