@@ -9,7 +9,7 @@ import {
 import { 
   add, close, addCircleOutline, trashOutline, 
   schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, 
-  eyeOutline, informationCircleOutline, statsChartOutline, flameOutline, notifications, 
+  eyeOutline, informationCircleOutline, flameOutline, notifications, 
   notificationsOutline, downloadOutline, helpCircleOutline, construct, constructOutline, 
   checkmarkCircleOutline, warningOutline, syncOutline
 } from 'ionicons/icons';
@@ -18,9 +18,9 @@ import { Share } from '@capacitor/share';
 import { Preferences } from '@capacitor/preferences';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion, CategoriaPlantilla } from '../context/MateriasContext';
+import { useMaterias, Materia, Categoria, SubActividad, CategoriaPlantilla } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
-import { getActiveKey, calcularNotaDeCategoria, obtenerEtiquetaEscala, obtenerProgresoEtapas } from '../utils/calculos';
+import { obtenerEtiquetaEscala } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import CampoNota from '../components/CampoNota';
 import './Tab1.css';
@@ -43,11 +43,6 @@ type ExtendedMateria = Materia & {
   usaMejoramiento?: boolean;
   notaMejoramiento?: number;
 };
-
-interface HistorialPunto {
-  fecha: string;
-  valor: number;
-}
 
 const PLANTILLAS_EVALUACION: Plantilla[] = [
   { id: 'dos-examenes', nombre: '2 Exámenes', descripcion: '50% y 50%', categorias: [{ nombre: 'Examen 1', peso: 50 }, { nombre: 'Examen 2', peso: 50 }] },
@@ -91,13 +86,13 @@ const generarMensajeAtencionLocal = (materia: ExtendedMateria, stats: any) => {
         return { tipo: 'exito', texto: `¡Excelente en ${materia.nombre}! Ya aseguraste tu meta.` };
     }
     if (stats.notaNecesaria > 100) {
-        return { tipo: 'peligro', texto: `${materia.nombre} necesita un milagro (>100 en lo restante)` };
+        return { tipo: 'peligro', texto: `${materia.nombre} necesita un milagro en mejoramiento` };
     }
     if (diferencia > 0 && stats.notaNecesaria > 85) {
-        return { tipo: 'peligro', texto: `Alerta en ${materia.nombre}: necesitas > ${stats.notaNecesaria.toFixed(1)}/100 para aprobar.` };
+        return { tipo: 'peligro', texto: `Alerta en ${materia.nombre}: necesitas > ${stats.notaNecesaria}/100 para aprobar.` };
     }
     if (diferencia > 0 && stats.notaNecesaria > 70) {
-        return { tipo: 'precaucion', texto: `${materia.nombre} requiere atención (> ${stats.notaNecesaria.toFixed(1)}/100)` };
+        return { tipo: 'precaucion', texto: `${materia.nombre} requiere atención (> ${stats.notaNecesaria}/100)` };
     }
     return null;
 };
@@ -137,71 +132,6 @@ const AvatarMateria = ({ claveIcono, color }: { claveIcono: string, color: strin
     <IonIcon icon={obtenerIcono(claveIcono)} style={{ fontSize: '1.3rem', color: `var(--ion-color-${color}-contrast)` }} />
   </div>
 );
-
-const ProgresoEtapas = ({ etapa, visible = true }: { etapa: EtapaEvaluacion, visible?: boolean }) => {
-  if (!visible) return null;
-  const progreso = obtenerProgresoEtapas(etapa);
-  const pasos: { label: string; estado: 'completado' | 'en-progreso' | 'pendiente' }[] = [
-    { label: 'P1', estado: progreso.p1 },
-    { label: 'P2', estado: progreso.p2 },
-    { label: 'Práctico', estado: progreso.practico },
-  ];
-  const colorPorEstado = { 'completado': 'success', 'en-progreso': 'warning', 'pendiente': 'medium' };
-
-  return (
-    <div style={{ display: 'flex', gap: '5px', marginTop: '4px' }}>
-      {pasos.map(p => (
-        <span key={p.label} style={{
-          fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px',
-          background: `var(--ion-color-${colorPorEstado[p.estado]})`,
-          color: `var(--ion-color-${colorPorEstado[p.estado]}-contrast)`,
-          opacity: p.estado === 'pendiente' ? 0.45 : 1,
-          transition: 'opacity 0.3s ease, background 0.3s ease'
-        }}>
-          {p.label}
-        </span>
-      ))}
-    </div>
-  );
-};
-
-const Sparkline = ({ datos, color }: { datos: HistorialPunto[], color: string }) => {
-  if (!datos || datos.length < 2) {
-    return (
-      <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)', margin: '4px 0 0' }}>
-        Aún no hay suficiente historial para mostrar una tendencia. Vuelve luego de actualizar tus notas otro día.
-      </p>
-    );
-  }
-
-  const width = 280;
-  const height = 50;
-  const valores = datos.map(d => d.valor);
-  const min = Math.min(...valores, 0);
-  const max = Math.max(...valores, 100);
-  const rango = max - min || 1;
-
-  const puntos = datos.map((d, i) => {
-    const x = (i / (datos.length - 1)) * width;
-    const y = height - ((d.valor - min) / rango) * height;
-    return `${x},${y}`;
-  });
-
-  const ultimo = datos[datos.length - 1];
-  const [ultimoX, ultimoY] = puntos[puntos.length - 1].split(',').map(Number);
-
-  return (
-    <div>
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
-        <polyline points={puntos.join(' ')} fill="none" stroke={`var(--ion-color-${color})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={ultimoX} cy={ultimoY} r="4" fill={`var(--ion-color-${color})`} />
-      </svg>
-      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--ion-color-medium)' }}>
-        Último registro: {new Date(ultimo.fecha).toLocaleDateString()} • {ultimo.valor.toFixed(1)}
-      </p>
-    </div>
-  );
-};
 
 const TarjetaEsqueleto = () => (
   <div style={{
@@ -378,10 +308,22 @@ const Tab1: React.FC = () => {
     setSwipeRatios(prev => ({ ...prev, [id]: Math.min(Math.abs(ratio), 1) }));
   };
 
+  const calcularNotaLocal = (cat: Categoria): number => {
+    if (cat.subActividades.length === 0) return cat.notaGlobalRapida;
+    let sumaObtenida = 0;
+    let sumaMaxima = 0;
+    cat.subActividades.forEach(sub => {
+      sumaObtenida += sub.notaObtenida;
+      sumaMaxima += sub.notaMaxima;
+    });
+    if (sumaMaxima === 0) return 0;
+    return (sumaObtenida / sumaMaxima) * 100;
+  };
+
   const calcularEstadisticas = (mat: ExtendedMateria) => {
-    const notaP1 = (mat.categoriasP1 || []).reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
-    const notaP2 = (mat.categoriasP2 || []).reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
-    const notaPr = (mat.categoriasPractico || []).reduce((acc, cat) => acc + (calcularNotaDeCategoria(cat) * (cat.peso / 100)), 0);
+    const notaP1 = (mat.categoriasP1 || []).reduce((acc, cat) => acc + (calcularNotaLocal(cat) * (cat.peso / 100)), 0);
+    const notaP2 = (mat.categoriasP2 || []).reduce((acc, cat) => acc + (calcularNotaLocal(cat) * (cat.peso / 100)), 0);
+    const notaPr = (mat.categoriasPractico || []).reduce((acc, cat) => acc + (calcularNotaLocal(cat) * (cat.peso / 100)), 0);
 
     const pesoGlobalP1 = mat.pesoTeorico / 2;
     const pesoGlobalP2 = mat.pesoTeorico / 2;
@@ -407,34 +349,49 @@ const Tab1: React.FC = () => {
     const pesoCargadoP2 = (mat.categoriasP2 || []).reduce((acc, cat) => acc + cat.peso, 0);
     const pesoCargadoPr = (mat.categoriasPractico || []).reduce((acc, cat) => acc + cat.peso, 0);
 
-    const pesoUsadoP1 = (clamp(pesoCargadoP1, 0, 100) / 100) * pesoGlobalP1;
-    const pesoUsadoP2 = (clamp(pesoCargadoP2, 0, 100) / 100) * pesoGlobalP2;
-    const pesoUsadoPr = (clamp(pesoCargadoPr, 0, 100) / 100) * pesoGlobalPr;
+    const faltanteGlobalP1 = Math.max(0, 100 - pesoCargadoP1) / 100 * pesoGlobalP1;
+    const faltanteGlobalP2 = Math.max(0, 100 - pesoCargadoP2) / 100 * pesoGlobalP2;
+    const faltanteGlobalPr = Math.max(0, 100 - pesoCargadoPr) / 100 * pesoGlobalPr;
 
-    const pesoGlobalRestante = 100 - pesoUsadoP1 - pesoUsadoP2 - pesoUsadoPr;
+    const pesoGlobalRestante = faltanteGlobalP1 + faltanteGlobalP2 + faltanteGlobalPr;
     const puntosFaltantesParaMeta = mat.notaDeseada - acumuladoGlobal;
 
     let notaNecesaria = 0;
+    let requiereMejoramientoParaPasar = false;
+    let perdidaInclusoConMejoramiento = false;
+    let notaMejoramientoNecesaria = 0;
+
     if (puntosFaltantesParaMeta <= 0) {
       notaNecesaria = 0;
     } else if (pesoGlobalRestante > 0) {
-      notaNecesaria = (puntosFaltantesParaMeta / pesoGlobalRestante) * 100;
+      notaNecesaria = Math.ceil((puntosFaltantesParaMeta / pesoGlobalRestante) * 100);
     } else {
       notaNecesaria = 999;
     }
 
-    const listaActiva = mat[getActiveKey(mat.etapa)] as Categoria[];
-    const pesoActivoCargado = listaActiva.reduce((acc, cat) => acc + cat.peso, 0);
-    const notaActivaParcial = mat.etapa === 1 ? notaP1 : mat.etapa === 2 ? notaP2 : notaPr;
+    if (notaNecesaria > 100) {
+      const peorNota = Math.min(notaP1Efectiva, notaP2Efectiva);
+      const gananciaMaximaMejoramiento = (100 - peorNota) * (pesoGlobalP1 / 100);
+      
+      if (puntosFaltantesParaMeta <= pesoGlobalRestante + gananciaMaximaMejoramiento) {
+        requiereMejoramientoParaPasar = true;
+        const puntosAConseguirEnMej = puntosFaltantesParaMeta - pesoGlobalRestante; 
+        notaMejoramientoNecesaria = Math.ceil(peorNota + (puntosAConseguirEnMej / (pesoGlobalP1 / 100)));
+      } else {
+        perdidaInclusoConMejoramiento = true;
+      }
+    }
 
     return { 
       notaP1, notaP2, notaPr, 
       notaP1Efectiva, notaP2Efectiva,
       acumuladoGlobal, notaNecesaria, 
-      pesoActivoCargado, notaActivaParcial, 
-      listaActiva, 
       pesoCargadoP1, pesoCargadoP2, pesoCargadoPr,
-      pesoGlobalRestante 
+      faltanteGlobalP1, faltanteGlobalP2, faltanteGlobalPr,
+      pesoGlobalRestante,
+      requiereMejoramientoParaPasar,
+      perdidaInclusoConMejoramiento,
+      notaMejoramientoNecesaria
     };
   };
 
@@ -564,7 +521,7 @@ const Tab1: React.FC = () => {
       `Meta: ${materia.notaDeseada}`,
     ];
     if (stats.acumuladoGlobal < materia.notaDeseada) {
-      lineas.push(`Necesito ${stats.notaNecesaria.toFixed(1)}/100 en lo que falta para alcanzar mi meta.`);
+      lineas.push(`Necesito ${stats.notaNecesaria}/100 en lo que falta para alcanzar mi meta.`);
     } else {
       lineas.push('¡Meta alcanzada!');
     }
@@ -660,7 +617,7 @@ const Tab1: React.FC = () => {
     return (
       <IonAccordionGroup style={{ marginTop: '5px' }}>
         {lista.map((cat) => {
-          const notaCalculada = calcularNotaDeCategoria(cat);
+          const notaCalculada = calcularNotaLocal(cat);
           const tieneSubs = cat.subActividades.length > 0;
 
           return (
@@ -826,7 +783,10 @@ const Tab1: React.FC = () => {
             }}>
               <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Promedio General</p>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Promedio General
+                    <IonIcon icon={helpCircleOutline} style={{ fontSize: '0.9rem' }} onClick={() => mostrarAyuda('Promedio General', 'Es el promedio de tus calificaciones actuales acumuladas en todas tus materias.')} />
+                  </p>
                   <p style={{ margin: '4px 0 0', fontSize: '1.8rem', fontWeight: '800', color: 'var(--ion-text-color)' }}>{promedioGeneral.toFixed(1)}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -1019,6 +979,7 @@ const Tab1: React.FC = () => {
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                           Meta
+                          <IonIcon icon={helpCircleOutline} style={{ fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => mostrarAyuda('¿Qué es la Meta?', 'Es la nota que quieres alcanzar en esta materia al terminar, sobre 100. Tú la defines: si tu meta es 70, la app te va a decir cuánto necesitas sacar en lo que falta para llegar a esa nota.')} />
                         </p>
                         <CampoNota
                           value={materiaSeleccionada.notaDeseada}
@@ -1037,17 +998,17 @@ const Tab1: React.FC = () => {
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px', cursor: 'pointer' }} onClick={mostrarDetalleNecesitas}>
                         <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                           Necesitas
-                          <IonIcon icon={informationCircleOutline} style={{ fontSize: '0.8rem' }} />
+                          <IonIcon icon={informationCircleOutline} style={{ fontSize: '0.85rem' }} />
                         </p>
-                        <p style={{ margin: '8px 0 0', fontWeight: '800', fontSize: '1.3rem', color: stats.notaNecesaria > 100 ? 'var(--ion-color-danger)' : 'var(--ion-color-success)' }}>
-                          {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada ? '0' : (stats.notaNecesaria > 0 ? stats.notaNecesaria.toFixed(1) : '0')}
+                        <p style={{ margin: '8px 0 0', fontWeight: '800', fontSize: '1.3rem', color: stats.perdidaInclusoConMejoramiento ? 'var(--ion-color-danger)' : 'var(--ion-color-success)' }}>
+                          {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada ? '0' : (stats.perdidaInclusoConMejoramiento ? 'Imp.' : stats.notaNecesaria > 100 ? 'Mej.' : stats.notaNecesaria)}
                         </p>
                       </div>
 
                     </div>
                     {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada && (
-                      <div style={{ background: 'rgba(var(--ion-color-success-rgb), 0.15)', color: 'var(--ion-color-success)', padding: '6px', borderRadius: '6px', fontWeight: '800', textAlign: 'center', letterSpacing: '1px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                        <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '1rem' }} />
+                      <div style={{ background: 'rgba(var(--ion-color-success-rgb), 0.15)', color: 'var(--ion-color-success)', padding: '6px', borderRadius: '6px', fontWeight: '800', textAlign: 'center', letterSpacing: '1px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '4px' }}>
+                        <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '1.2rem' }} />
                         ASIGNATURA APROBADA
                       </div>
                     )}
@@ -1084,12 +1045,11 @@ const Tab1: React.FC = () => {
 
                   <IonAccordionGroup multiple={true} value={['p1', 'p2', 'pr']}>
                     
-                    {/* ACORDEÓN: PARCIAL 1 */}
                     <IonAccordion value="p1" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                       <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
                         <IonLabel>
                           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Primer Parcial</h2>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaP1.toFixed(1)} / 100</strong></p>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaP1} / 100</strong></p>
                         </IonLabel>
                       </IonItem>
                       <div slot="content" className="ion-padding" style={{ paddingTop: 0 }}>
@@ -1105,13 +1065,12 @@ const Tab1: React.FC = () => {
                       </div>
                     </IonAccordion>
 
-                    {/* ACORDEÓN: PARCIAL 2 */}
                     <IonAccordion value="p2" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                       <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
                         <IonLabel>
                           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Segundo Parcial</h2>
                           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>
-                            Nota Actual: <strong style={{ textDecoration: materiaSeleccionada.usaMejoramiento && stats.notaP2 < stats.notaP1 && materiaSeleccionada.notaMejoramiento! > stats.notaP2 ? 'line-through' : 'none' }}>{stats.notaP2.toFixed(1)}</strong> / 100
+                            Nota Actual: <strong style={{ textDecoration: materiaSeleccionada.usaMejoramiento && stats.notaP2 < stats.notaP1 && materiaSeleccionada.notaMejoramiento! > stats.notaP2 ? 'line-through' : 'none' }}>{stats.notaP2}</strong> / 100
                           </p>
                         </IonLabel>
                       </IonItem>
@@ -1128,7 +1087,6 @@ const Tab1: React.FC = () => {
                       </div>
                     </IonAccordion>
 
-                    {/* TARJETA FIJA: MEJORAMIENTO */}
                     <IonCard style={{ margin: '0 0 15px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
                       <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1161,13 +1119,12 @@ const Tab1: React.FC = () => {
                       )}
                     </IonCard>
 
-                    {/* ACORDEÓN: PRÁCTICO */}
                     {materiaSeleccionada.pesoPractico > 0 && (
                       <IonAccordion value="pr" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                         <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
                           <IonLabel>
                             <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Trabajo Práctico</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaPr.toFixed(1)} / 100</strong></p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaPr} / 100</strong></p>
                           </IonLabel>
                         </IonItem>
                         <div slot="content" className="ion-padding" style={{ paddingTop: 0 }}>
@@ -1194,7 +1151,7 @@ const Tab1: React.FC = () => {
         <IonModal isOpen={isNecesitasOpen} initialBreakpoint={0.4} breakpoints={[0, 0.4]} onDidDismiss={() => setIsNecesitasOpen(false)}>
           {materiaSeleccionada && (() => {
             const stats = calcularEstadisticas(materiaSeleccionada);
-            const notaAprox = stats.notaNecesaria.toFixed(1);
+            const notaAprox = stats.notaNecesaria;
 
             return (
               <IonContent className="ion-padding">
@@ -1213,20 +1170,32 @@ const Tab1: React.FC = () => {
                       Has alcanzado tu objetivo. Cualquier calificación adicional aumentará tu promedio final.
                     </p>
                   </div>
-                ) : stats.notaNecesaria > 100 ? (
+                ) : stats.perdidaInclusoConMejoramiento ? (
                   <div style={{ background: 'rgba(var(--ion-color-danger-rgb), 0.1)', padding: '16px', borderRadius: '12px', borderLeft: '4px solid var(--ion-color-danger)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <IonIcon icon={alertCircleOutline} style={{ color: 'var(--ion-color-danger)', fontSize: '1.2rem' }} />
                       <span style={{ color: 'var(--ion-color-danger)', fontWeight: '700', fontSize: '1rem' }}>Meta inalcanzable</span>
                     </div>
                     <p style={{ margin: 0, color: 'var(--ion-text-color)', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                      Matemáticamente requieres un promedio de <strong>{notaAprox}/100</strong> en las evaluaciones restantes, lo cual excede el máximo permitido. Si existe, un examen de mejoramiento podría ayudarte.
+                      Matemáticamente requieres una nota superior a 100 en las evaluaciones restantes. No es posible alcanzar la meta actual con los porcentajes disponibles.
                     </p>
                   </div>
+                ) : stats.requiereMejoramientoParaPasar ? (
+                  <>
+                    <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.95rem', marginBottom: '20px', lineHeight: '1.5' }}>
+                      Ya no cuentas con puntaje regular suficiente. Para alcanzar la meta de <strong>{materiaSeleccionada.notaDeseada}</strong>, tu única opción es el examen de mejoramiento.
+                    </p>
+                    <div style={{ background: 'var(--ion-color-step-50)', padding: '16px', borderRadius: '12px', borderLeft: `4px solid var(--ion-color-${materiaSeleccionada.color})` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>Examen de Mejoramiento</span>
+                        <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {stats.notaMejoramientoNecesaria}/100</span>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.95rem', marginBottom: '20px', lineHeight: '1.5' }}>
-                      Para alcanzar la meta de <strong>{materiaSeleccionada.notaDeseada}</strong>, debes mantener un promedio global de <strong style={{ color: 'var(--ion-text-color)' }}>{notaAprox}/100</strong> en el porcentaje restante de la materia ({stats.pesoGlobalRestante.toFixed(1)}%).
+                      Aún no has completado el 100% de tus notas. Para alcanzar la meta de <strong>{materiaSeleccionada.notaDeseada}</strong>, debes mantener un promedio mínimo de <strong style={{ color: 'var(--ion-text-color)' }}>{notaAprox}/100</strong> en lo que falta por calificar.
                     </p>
                     
                     <div style={{ background: 'var(--ion-color-step-50)', padding: '16px', borderRadius: '12px', borderLeft: `4px solid var(--ion-color-${materiaSeleccionada.color})` }}>
@@ -1237,19 +1206,24 @@ const Tab1: React.FC = () => {
                         </span>
                       </div>
                       
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--ion-color-step-100)', paddingBottom: '8px' }}>
-                        <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>En lo que falta del P1 y P2</span>
-                        <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>
-                          {stats.pesoCargadoP1 >= 100 && stats.pesoCargadoP2 >= 100 ? `Cerrados` : `> ${notaAprox}/100`}
-                        </span>
-                      </div>
+                      {stats.faltanteGlobalP1 > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid var(--ion-color-step-100)', paddingBottom: '8px' }}>
+                          <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>En lo que falta del Primer Parcial</span>
+                          <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {notaAprox}/100</span>
+                        </div>
+                      )}
 
-                      {materiaSeleccionada.pesoPractico > 0 && (
+                      {stats.faltanteGlobalP2 > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: materiaSeleccionada.pesoPractico > 0 && stats.faltanteGlobalPr > 0 ? '10px' : '0', borderBottom: materiaSeleccionada.pesoPractico > 0 && stats.faltanteGlobalPr > 0 ? '1px solid var(--ion-color-step-100)' : 'none', paddingBottom: materiaSeleccionada.pesoPractico > 0 && stats.faltanteGlobalPr > 0 ? '8px' : '0' }}>
+                          <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>En lo que falta del Segundo Parcial</span>
+                          <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {notaAprox}/100</span>
+                        </div>
+                      )}
+                      
+                      {materiaSeleccionada.pesoPractico > 0 && stats.faltanteGlobalPr > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>En lo que falta del Práctico</span>
-                          <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>
-                            {stats.pesoCargadoPr >= 100 ? `Cerrado` : `> ${notaAprox}/100`}
-                          </span>
+                          <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {notaAprox}/100</span>
                         </div>
                       )}
                     </div>
