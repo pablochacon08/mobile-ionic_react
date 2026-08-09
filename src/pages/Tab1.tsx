@@ -9,23 +9,34 @@ import {
 import { 
   add, close, addCircleOutline, trashOutline, 
   schoolOutline, trendingUpOutline, alertCircleOutline, shareOutline, createOutline, 
-  eyeOutline, informationCircleOutline, flameOutline, notifications, 
+  eyeOutline, informationCircleOutline, statsChartOutline, flameOutline, notifications, 
   notificationsOutline, downloadOutline, helpCircleOutline, construct, constructOutline, 
-  checkmarkCircleOutline, warningOutline, syncOutline
+  checkmarkCircleOutline, warningOutline, syncOutline, settingsOutline
 } from 'ionicons/icons';
 import confetti from 'canvas-confetti';
 import { Share } from '@capacitor/share';
 import { Preferences } from '@capacitor/preferences';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { useMaterias, Materia, Categoria, SubActividad, CategoriaPlantilla } from '../context/MateriasContext';
+import { useMaterias, Materia, Categoria, SubActividad, EtapaEvaluacion, CategoriaPlantilla, HistorialPunto } from '../context/MateriasContext';
 import { useEscalas } from '../context/EscalasContext';
-import { obtenerEtiquetaEscala } from '../utils/calculos';
+import { obtenerEtiquetaEscala, obtenerProgresoEtapas } from '../utils/calculos';
 import { iconosDisponibles, obtenerIcono } from '../utils/iconos';
 import CampoNota from '../components/CampoNota';
 import './Tab1.css';
 
 const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
+
+// Helper: Redondear siempre hacia arriba con 1 decimal
+const roundUpOneDecimal = (num: number) => {
+  return Math.ceil(num * 10) / 10;
+};
+
+// Helper: Redondeo estricto hacia arriba (entero, sin decimales) para la vista de predicción "Necesitas"
+const necesitasEntero = (num: number) => {
+  if (!isFinite(num)) return 0;
+  return Math.max(0, Math.ceil(num));
+};
 
 const COACHMARK_KEY = 'coachmark_dashboard_v1';
 const NOTIFICACIONES_KEY = 'notificaciones_activas';
@@ -85,8 +96,8 @@ const generarMensajeAtencionLocal = (materia: ExtendedMateria, stats: any) => {
     if (diferencia <= 0) {
         return { tipo: 'exito', texto: `¡Excelente en ${materia.nombre}! Ya aseguraste tu meta.` };
     }
-    if (stats.notaNecesaria > 100) {
-        return { tipo: 'peligro', texto: `${materia.nombre} necesita un milagro en mejoramiento` };
+    if (stats.notaNecesaria > 100 && !stats.requiereMejoramientoParaPasar) {
+        return { tipo: 'peligro', texto: `${materia.nombre} necesita un milagro (>100 en lo restante)` };
     }
     if (diferencia > 0 && stats.notaNecesaria > 85) {
         return { tipo: 'peligro', texto: `Alerta en ${materia.nombre}: necesitas > ${stats.notaNecesaria}/100 para aprobar.` };
@@ -132,6 +143,120 @@ const AvatarMateria = ({ claveIcono, color }: { claveIcono: string, color: strin
     <IonIcon icon={obtenerIcono(claveIcono)} style={{ fontSize: '1.3rem', color: `var(--ion-color-${color}-contrast)` }} />
   </div>
 );
+
+const ProgresoEtapas = ({ etapa, visible = true }: { etapa: EtapaEvaluacion, visible?: boolean }) => {
+  if (!visible) return null;
+  const progreso = obtenerProgresoEtapas(etapa);
+  const pasos: { label: string; estado: 'completado' | 'en-progreso' | 'pendiente' }[] = [
+    { label: 'P1', estado: progreso.p1 },
+    { label: 'P2', estado: progreso.p2 },
+    { label: 'Práctico', estado: progreso.practico },
+  ];
+  const colorPorEstado = { 'completado': 'success', 'en-progreso': 'warning', 'pendiente': 'medium' };
+
+  return (
+    <div style={{ display: 'flex', gap: '5px', marginTop: '4px' }}>
+      {pasos.map(p => (
+        <span key={p.label} style={{
+          fontSize: '0.62rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px',
+          background: `var(--ion-color-${colorPorEstado[p.estado]})`,
+          color: `var(--ion-color-${colorPorEstado[p.estado]}-contrast)`,
+          opacity: p.estado === 'pendiente' ? 0.45 : 1,
+          transition: 'opacity 0.3s ease, background 0.3s ease'
+        }}>
+          {p.label}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const Sparkline = ({ datos, color }: { datos: HistorialPunto[], color: string }) => {
+  const gradientId = useRef(`sparkline-grad-${Math.random().toString(36).slice(2)}`).current;
+
+  if (!datos || datos.length < 2) {
+    return (
+      <p style={{ fontSize: '0.75rem', color: 'var(--ion-color-medium)', margin: '4px 0 0' }}>
+        Aún no hay suficiente historial para mostrar una tendencia. Vuelve luego de actualizar tus notas otro día.
+      </p>
+    );
+  }
+
+  const width = 280;
+  const height = 90;
+  const padY = 14;
+  const drawableHeight = height - padY * 2;
+
+  const valores = datos.map(d => d.valor);
+  const max = Math.max(...valores);
+  const min = Math.min(...valores);
+  const rango = (max - min) || 1;
+
+  const puntos = datos.map((d, i) => ({
+    x: (i / (datos.length - 1)) * width,
+    y: padY + drawableHeight - ((d.valor - min) / rango) * drawableHeight,
+    valor: d.valor,
+  }));
+
+  // Curva suavizada tipo dashboard (segmentos bezier entre cada punto)
+  const buildSmoothPath = (pts: { x: number; y: number }[]) => {
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      const midX = (p0.x + p1.x) / 2;
+      d += ` C ${midX},${p0.y} ${midX},${p1.y} ${p1.x},${p1.y}`;
+    }
+    return d;
+  };
+
+  const linePath = buildSmoothPath(puntos);
+  const areaPath = `${linePath} L ${puntos[puntos.length - 1].x},${height} L ${puntos[0].x},${height} Z`;
+
+  const idxMax = valores.indexOf(max);
+  const idxMin = valores.indexOf(min);
+  const hayVariacion = idxMax !== idxMin;
+
+  const ultimo = datos[datos.length - 1];
+  const ultimoPunto = puntos[puntos.length - 1];
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: '12px' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={`var(--ion-color-${color})`} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={`var(--ion-color-${color})`} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
+          <path d={linePath} fill="none" stroke={`var(--ion-color-${color})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {hayVariacion && (
+            <circle cx={puntos[idxMax].x} cy={puntos[idxMax].y} r="3.5" fill="var(--ion-color-success)" stroke="var(--ion-card-background)" strokeWidth="1.5" />
+          )}
+          {hayVariacion && (
+            <circle cx={puntos[idxMin].x} cy={puntos[idxMin].y} r="3.5" fill="var(--ion-color-danger)" stroke="var(--ion-card-background)" strokeWidth="1.5" />
+          )}
+          <circle cx={ultimoPunto.x} cy={ultimoPunto.y} r="4.5" fill={`var(--ion-color-${color})`} stroke="var(--ion-card-background)" strokeWidth="2" />
+        </svg>
+        <p style={{ margin: '6px 0 0', fontSize: '0.7rem', color: 'var(--ion-color-medium)' }}>
+          Último registro: {new Date(ultimo.fecha).toLocaleDateString()} • {ultimo.valor.toFixed(1)}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px', minWidth: '76px', borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.6rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>Mejor nota</p>
+          <p style={{ margin: '2px 0 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--ion-color-success)' }}>{max.toFixed(1)}</p>
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.6rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>Más baja</p>
+          <p style={{ margin: '2px 0 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--ion-color-danger)' }}>{min.toFixed(1)}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TarjetaEsqueleto = () => (
   <div style={{
@@ -196,6 +321,10 @@ const Tab1: React.FC = () => {
   const [swipeRatios, setSwipeRatios] = useState<Record<string, number>>({});
   const [notificacionesActivas, setNotificacionesActivas] = useState(false);
   const [modoAvanzado, setModoAvanzado] = useState(false);
+  
+  // Estado para controlar qué acordeón está abierto sin que se disparen todos al recargar
+  const [accordionValue, setAccordionValue] = useState<string | string[]>('p1');
+
   const celebratedRef = useRef<Record<string, boolean>>({});
   const slidingRefs = useRef<Record<string, any>>({});
   const inputRefs = useRef<Record<string, any>>({});
@@ -349,11 +478,15 @@ const Tab1: React.FC = () => {
     const pesoCargadoP2 = (mat.categoriasP2 || []).reduce((acc, cat) => acc + cat.peso, 0);
     const pesoCargadoPr = (mat.categoriasPractico || []).reduce((acc, cat) => acc + cat.peso, 0);
 
+    const pesoUsadoP1 = (clamp(pesoCargadoP1, 0, 100) / 100) * pesoGlobalP1;
+    const pesoUsadoP2 = (clamp(pesoCargadoP2, 0, 100) / 100) * pesoGlobalP2;
+    const pesoUsadoPr = (clamp(pesoCargadoPr, 0, 100) / 100) * pesoGlobalPr;
+
     const faltanteGlobalP1 = Math.max(0, 100 - pesoCargadoP1) / 100 * pesoGlobalP1;
     const faltanteGlobalP2 = Math.max(0, 100 - pesoCargadoP2) / 100 * pesoGlobalP2;
     const faltanteGlobalPr = Math.max(0, 100 - pesoCargadoPr) / 100 * pesoGlobalPr;
 
-    const pesoGlobalRestante = faltanteGlobalP1 + faltanteGlobalP2 + faltanteGlobalPr;
+    const pesoGlobalRestante = 100 - pesoUsadoP1 - pesoUsadoP2 - pesoUsadoPr;
     const puntosFaltantesParaMeta = mat.notaDeseada - acumuladoGlobal;
 
     let notaNecesaria = 0;
@@ -364,7 +497,7 @@ const Tab1: React.FC = () => {
     if (puntosFaltantesParaMeta <= 0) {
       notaNecesaria = 0;
     } else if (pesoGlobalRestante > 0) {
-      notaNecesaria = Math.ceil((puntosFaltantesParaMeta / pesoGlobalRestante) * 100);
+      notaNecesaria = roundUpOneDecimal((puntosFaltantesParaMeta / pesoGlobalRestante) * 100);
     } else {
       notaNecesaria = 999;
     }
@@ -376,7 +509,14 @@ const Tab1: React.FC = () => {
       if (puntosFaltantesParaMeta <= pesoGlobalRestante + gananciaMaximaMejoramiento) {
         requiereMejoramientoParaPasar = true;
         const puntosAConseguirEnMej = puntosFaltantesParaMeta - pesoGlobalRestante; 
-        notaMejoramientoNecesaria = Math.ceil(peorNota + (puntosAConseguirEnMej / (pesoGlobalP1 / 100)));
+        notaMejoramientoNecesaria = roundUpOneDecimal(peorNota + (puntosAConseguirEnMej / (pesoGlobalP1 / 100)));
+
+        // Escenario D a prueba de fallos: si tras el redondeo estricto la nota de mejoramiento
+        // requerida sigue superando 100, la meta es matemáticamente inalcanzable ("Imposible").
+        if (necesitasEntero(notaMejoramientoNecesaria) > 100) {
+          requiereMejoramientoParaPasar = false;
+          perdidaInclusoConMejoramiento = true;
+        }
       } else {
         perdidaInclusoConMejoramiento = true;
       }
@@ -502,6 +642,7 @@ const Tab1: React.FC = () => {
       categoriasPractico: materia.categoriasPractico || []
     } as ExtendedMateria;
     setMateriaSeleccionada(matSegura);
+    setAccordionValue('p1'); // Se asegura de abrir la primera pestaña de forma elegante al abrir una materia
     setIsDetailOpen(true);
   };
 
@@ -521,7 +662,7 @@ const Tab1: React.FC = () => {
       `Meta: ${materia.notaDeseada}`,
     ];
     if (stats.acumuladoGlobal < materia.notaDeseada) {
-      lineas.push(`Necesito ${stats.notaNecesaria}/100 en lo que falta para alcanzar mi meta.`);
+      lineas.push(`Necesito ${stats.notaNecesaria.toFixed(1)}/100 en lo que falta para alcanzar mi meta.`);
     } else {
       lineas.push('¡Meta alcanzada!');
     }
@@ -727,6 +868,9 @@ const Tab1: React.FC = () => {
             </IonButton>
             <IonButton onClick={alternarNotificaciones} title="Recordatorios">
               <IonIcon icon={notificacionesActivas ? notifications : notificationsOutline} />
+            </IonButton>
+            <IonButton routerLink="/tab3" title="Configuración">
+              <IonIcon icon={settingsOutline} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
@@ -988,7 +1132,10 @@ const Tab1: React.FC = () => {
                         />
                       </div>
                       <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)', paddingLeft: '10px' }}>
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase' }}>Tu nota actual</p>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                          Tu nota actual
+                          <IonIcon icon={helpCircleOutline} style={{ fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => mostrarAyuda('Tu nota actual', 'Es la suma de los puntos que has ganado hasta el momento, considerando el peso de cada actividad. No es un promedio general simple.')} />
+                        </p>
                         <p style={{ margin: '8px 0 0', fontWeight: '700', fontSize: '1.3rem', color: 'var(--ion-text-color)' }}>{stats.acumuladoGlobal.toFixed(1)}</p>
                         {etiquetaEscala && (
                           <p style={{ margin: '2px 0 0', fontSize: '0.65rem', fontWeight: '700', color: `var(--ion-color-${materiaSeleccionada.color})` }}>{etiquetaEscala}</p>
@@ -1000,15 +1147,21 @@ const Tab1: React.FC = () => {
                           Necesitas
                           <IonIcon icon={informationCircleOutline} style={{ fontSize: '0.85rem' }} />
                         </p>
-                        <p style={{ margin: '8px 0 0', fontWeight: '800', fontSize: '1.3rem', color: stats.perdidaInclusoConMejoramiento ? 'var(--ion-color-danger)' : 'var(--ion-color-success)' }}>
-                          {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada ? '0' : (stats.perdidaInclusoConMejoramiento ? 'Imp.' : stats.notaNecesaria > 100 ? 'Mej.' : stats.notaNecesaria)}
+                        <p style={{ margin: '8px 0 0', fontWeight: '800', fontSize: stats.perdidaInclusoConMejoramiento ? '1rem' : '1.3rem', color: stats.perdidaInclusoConMejoramiento ? 'var(--ion-color-danger)' : 'var(--ion-color-success)' }}>
+                          {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada
+                            ? '0'
+                            : stats.perdidaInclusoConMejoramiento
+                              ? 'Imposible'
+                              : stats.requiereMejoramientoParaPasar
+                                ? necesitasEntero(stats.notaMejoramientoNecesaria)
+                                : necesitasEntero(stats.notaNecesaria)}
                         </p>
                       </div>
 
                     </div>
                     {stats.acumuladoGlobal >= materiaSeleccionada.notaDeseada && (
                       <div style={{ background: 'rgba(var(--ion-color-success-rgb), 0.15)', color: 'var(--ion-color-success)', padding: '6px', borderRadius: '6px', fontWeight: '800', textAlign: 'center', letterSpacing: '1px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '4px' }}>
-                        <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '1.2rem' }} />
+                        <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '1rem' }} />
                         ASIGNATURA APROBADA
                       </div>
                     )}
@@ -1017,39 +1170,50 @@ const Tab1: React.FC = () => {
 
                 <IonContent className="ion-padding">
                   <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
-                    <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      PONDERACIÓN GLOBAL
+                    <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <IonIcon icon={statsChartOutline} style={{ fontSize: '0.9rem' }} /> TENDENCIA
                     </div>
-                    <IonItem lines="none" color="transparent">
-                      <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>% Teórico (P1 + P2)</IonLabel>
-                      <CampoNota
-                        value={materiaSeleccionada.pesoTeorico}
-                        onChange={v => actualizarMateriaActual('pesoTeorico', v)}
-                        style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
-                      />
-                      <IonLabel color="medium" style={{ fontSize: '0.85rem', marginLeft: '15px' }}>% Práctico</IonLabel>
-                      <CampoNota
-                        value={materiaSeleccionada.pesoPractico}
-                        onChange={v => actualizarMateriaActual('pesoPractico', v)}
-                        ultimoCampo
-                        style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
-                      />
-                    </IonItem>
-                    {(materiaSeleccionada.pesoTeorico + materiaSeleccionada.pesoPractico) !== 100 && (
-                      <div style={{ padding: '8px 15px 12px', fontSize: '0.75rem', color: 'var(--ion-color-danger)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <IonIcon icon={warningOutline} style={{ fontSize: '1rem' }} />
-                        <span>Parciales + Práctico suman {materiaSeleccionada.pesoTeorico + materiaSeleccionada.pesoPractico}%, debe ser 100%</span>
-                      </div>
-                    )}
+                    <div style={{ padding: '14px 15px' }}>
+                      <Sparkline datos={materiaSeleccionada.historial ?? []} color={materiaSeleccionada.color} />
+                    </div>
                   </IonCard>
 
-                  <IonAccordionGroup multiple={true} value={['p1', 'p2', 'pr']}>
+                  {modoAvanzado && (
+                    <IonCard style={{ margin: '0 0 20px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+                      <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        PONDERACIÓN GLOBAL
+                      </div>
+                      <IonItem lines="none" color="transparent">
+                        <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>% Teórico (P1 + P2)</IonLabel>
+                        <CampoNota
+                          value={materiaSeleccionada.pesoTeorico}
+                          onChange={v => actualizarMateriaActual('pesoTeorico', v)}
+                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
+                        />
+                        <IonLabel color="medium" style={{ fontSize: '0.85rem', marginLeft: '15px' }}>% Práctico</IonLabel>
+                        <CampoNota
+                          value={materiaSeleccionada.pesoPractico}
+                          onChange={v => actualizarMateriaActual('pesoPractico', v)}
+                          ultimoCampo
+                          style={{ maxWidth: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
+                        />
+                      </IonItem>
+                      {(materiaSeleccionada.pesoTeorico + materiaSeleccionada.pesoPractico) !== 100 && (
+                        <div style={{ padding: '8px 15px 12px', fontSize: '0.75rem', color: 'var(--ion-color-danger)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <IonIcon icon={warningOutline} style={{ fontSize: '1rem' }} />
+                          <span>Parciales + Práctico suman {materiaSeleccionada.pesoTeorico + materiaSeleccionada.pesoPractico}%, debe ser 100%</span>
+                        </div>
+                      )}
+                    </IonCard>
+                  )}
+
+                  <IonAccordionGroup value={accordionValue} onIonChange={(e) => setAccordionValue(e.detail.value)}>
                     
                     <IonAccordion value="p1" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                       <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
                         <IonLabel>
                           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Primer Parcial</h2>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaP1} / 100</strong></p>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaP1.toFixed(1)} / 100</strong></p>
                         </IonLabel>
                       </IonItem>
                       <div slot="content" className="ion-padding" style={{ paddingTop: 0 }}>
@@ -1070,7 +1234,7 @@ const Tab1: React.FC = () => {
                         <IonLabel>
                           <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Segundo Parcial</h2>
                           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>
-                            Nota Actual: <strong style={{ textDecoration: materiaSeleccionada.usaMejoramiento && stats.notaP2 < stats.notaP1 && materiaSeleccionada.notaMejoramiento! > stats.notaP2 ? 'line-through' : 'none' }}>{stats.notaP2}</strong> / 100
+                            Nota Actual: <strong style={{ textDecoration: materiaSeleccionada.usaMejoramiento && stats.notaP2 < stats.notaP1 && materiaSeleccionada.notaMejoramiento! > stats.notaP2 ? 'line-through' : 'none' }}>{stats.notaP2.toFixed(1)}</strong> / 100
                           </p>
                         </IonLabel>
                       </IonItem>
@@ -1087,44 +1251,63 @@ const Tab1: React.FC = () => {
                       </div>
                     </IonAccordion>
 
-                    <IonCard style={{ margin: '0 0 15px 0', borderRadius: '12px', background: 'var(--ion-card-background)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
-                      <div style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <IonIcon icon={syncOutline} style={{ fontSize: '1rem', color: 'var(--ion-color-medium)' }} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px' }}>EXAMEN DE MEJORAMIENTO</span>
-                        </div>
-                        <IonToggle 
-                          checked={!!materiaSeleccionada.usaMejoramiento} 
-                          onIonChange={e => actualizarMateriaActual('usaMejoramiento', e.detail.checked)}
-                          style={{ '--background-checked': `var(--ion-color-${materiaSeleccionada.color})` }}
-                        />
-                      </div>
-                      {materiaSeleccionada.usaMejoramiento && (
-                        <IonItem lines="none" color="transparent" style={{ padding: '10px 0' }}>
-                          <IonLabel>
-                            <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', whiteSpace: 'normal', lineHeight: '1.4' }}>
-                              Reemplazará automáticamente la nota más baja entre el P1 y el P2 si es mayor.
-                            </p>
-                          </IonLabel>
-                          <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CampoNota
-                              value={materiaSeleccionada.notaMejoramiento || 0}
-                              onChange={v => actualizarMateriaActual('notaMejoramiento', v)}
-                              min={0} max={100}
-                              style={{ width: '50px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
-                            />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)' }}>/ 100</span>
+                    <IonAccordion value="mej" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+                      <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
+                        <IonLabel>
+                          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Examen de Mejoramiento</h2>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>
+                            {materiaSeleccionada.usaMejoramiento ? `Nota Actual: ${materiaSeleccionada.notaMejoramiento || 0} / 100` : 'Desactivado'}
+                          </p>
+                        </IonLabel>
+                      </IonItem>
+                      <div slot="content" className="ion-padding" style={{ paddingTop: 0 }}>
+                        <div
+                          onClick={e => e.stopPropagation()}
+                          style={{ padding: '10px 15px', background: 'var(--ion-color-step-50)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '8px', marginBottom: '10px' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <IonIcon icon={syncOutline} style={{ fontSize: '1rem', color: 'var(--ion-color-medium)' }} />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--ion-color-medium)', letterSpacing: '1px' }}>ACTIVAR MEJORAMIENTO</span>
                           </div>
-                        </IonItem>
-                      )}
-                    </IonCard>
+                          <IonToggle 
+                            checked={!!materiaSeleccionada.usaMejoramiento} 
+                            onClick={e => e.stopPropagation()}
+                            onIonChange={e => {
+                              e.stopPropagation();
+                              actualizarMateriaActual('usaMejoramiento', e.detail.checked);
+                            }}
+                            style={{ '--background-checked': `var(--ion-color-${materiaSeleccionada.color})` }}
+                          />
+                        </div>
+                        {materiaSeleccionada.usaMejoramiento && (
+                          <IonItem
+                            lines="none" color="transparent" style={{ padding: '0', '--padding-start': '0' }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <IonLabel>
+                              <p style={{ color: 'var(--ion-color-medium)', fontSize: '0.8rem', whiteSpace: 'normal', lineHeight: '1.4' }}>
+                                Ingresa la nota del examen. Reemplazará automáticamente la más baja entre el P1 y el P2.
+                              </p>
+                            </IonLabel>
+                            <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <CampoNota
+                                value={materiaSeleccionada.notaMejoramiento || 0}
+                                onChange={v => actualizarMateriaActual('notaMejoramiento', v)}
+                                min={0} max={100}
+                                style={{ width: '45px', textAlign: 'center', background: 'var(--ion-color-step-100)', borderRadius: '6px', fontWeight: 'bold' }}
+                              />
+                            </div>
+                          </IonItem>
+                        )}
+                      </div>
+                    </IonAccordion>
 
                     {materiaSeleccionada.pesoPractico > 0 && (
                       <IonAccordion value="pr" style={{ background: 'var(--ion-card-background)', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                         <IonItem slot="header" color="transparent" lines="none" style={{ '--padding-start': '15px', '--padding-end': '15px' }}>
                           <IonLabel>
                             <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: `var(--ion-color-${materiaSeleccionada.color})` }}>Trabajo Práctico</h2>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaPr} / 100</strong></p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ion-color-medium)' }}>Nota Actual: <strong>{stats.notaPr.toFixed(1)} / 100</strong></p>
                           </IonLabel>
                         </IonItem>
                         <div slot="content" className="ion-padding" style={{ paddingTop: 0 }}>
@@ -1151,7 +1334,7 @@ const Tab1: React.FC = () => {
         <IonModal isOpen={isNecesitasOpen} initialBreakpoint={0.4} breakpoints={[0, 0.4]} onDidDismiss={() => setIsNecesitasOpen(false)}>
           {materiaSeleccionada && (() => {
             const stats = calcularEstadisticas(materiaSeleccionada);
-            const notaAprox = stats.notaNecesaria;
+            const notaAprox = necesitasEntero(stats.notaNecesaria);
 
             return (
               <IonContent className="ion-padding">
@@ -1188,7 +1371,7 @@ const Tab1: React.FC = () => {
                     <div style={{ background: 'var(--ion-color-step-50)', padding: '16px', borderRadius: '12px', borderLeft: `4px solid var(--ion-color-${materiaSeleccionada.color})` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: 'var(--ion-color-medium)', fontWeight: '600', fontSize: '0.9rem' }}>Examen de Mejoramiento</span>
-                        <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {stats.notaMejoramientoNecesaria}/100</span>
+                        <span style={{ fontWeight: '700', color: 'var(--ion-text-color)', fontSize: '0.95rem' }}>&gt; {necesitasEntero(stats.notaMejoramientoNecesaria)}/100</span>
                       </div>
                     </div>
                   </>
