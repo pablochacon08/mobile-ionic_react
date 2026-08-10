@@ -201,29 +201,65 @@ const Tab2: React.FC = () => {
           </IonItem>
         </IonCard>
 
+        <style>{`
+          .predictor-glass-input::-webkit-inner-spin-button,
+          .predictor-glass-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          .predictor-glass-input {
+            -moz-appearance: textfield;
+          }
+        `}</style>
+
         <IonSegment 
           mode="ios"
           value={modoPrediccion} 
           onIonChange={e => setModoPrediccion(e.detail.value as ModoPrediccion)} 
           style={{ 
             marginBottom: '22px', 
-            background: 'var(--ion-color-step-50)', 
-            borderRadius: '12px', 
-            padding: '4px',
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04)' 
-          }}
+            background: 'rgba(var(--ion-text-color-rgb, 0,0,0), 0.035)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRadius: '999px', 
+            padding: '5px',
+            border: '1px solid rgba(var(--ion-text-color-rgb, 0,0,0), 0.06)',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.18), inset 0 -1px 2px rgba(255,255,255,0.04), 0 6px 18px rgba(0,0,0,0.05)'
+          } as React.CSSProperties}
         >
-          <IonSegmentButton value="todo" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>Global</IonSegmentButton>
-          <IonSegmentButton value="p1" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>P1</IonSegmentButton>
-          <IonSegmentButton value="p2" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>P2</IonSegmentButton>
-          {materia.pesoPractico > 0 && <IonSegmentButton value="pr" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>Práctico</IonSegmentButton>}
+          <IonSegmentButton value="todo" style={{ 
+            '--color-checked': 'var(--ion-text-color)', 
+            '--indicator-color': `rgba(var(--ion-color-${materia.color}-rgb), 0.16)`,
+            '--indicator-box-shadow': 'inset 0 1px 1px rgba(255,255,255,0.25), 0 3px 8px rgba(0,0,0,0.18)',
+            fontWeight: '900', fontSize: '0.68rem', letterSpacing: '0.9px', textTransform: 'uppercase', minHeight: '38px'
+          } as React.CSSProperties}>Global</IonSegmentButton>
+          <IonSegmentButton value="p1" style={{ 
+            '--color-checked': 'var(--ion-text-color)', 
+            '--indicator-color': `rgba(var(--ion-color-${materia.color}-rgb), 0.16)`,
+            '--indicator-box-shadow': 'inset 0 1px 1px rgba(255,255,255,0.25), 0 3px 8px rgba(0,0,0,0.18)',
+            fontWeight: '900', fontSize: '0.68rem', letterSpacing: '0.9px', textTransform: 'uppercase', minHeight: '38px'
+          } as React.CSSProperties}>P1</IonSegmentButton>
+          <IonSegmentButton value="p2" style={{ 
+            '--color-checked': 'var(--ion-text-color)', 
+            '--indicator-color': `rgba(var(--ion-color-${materia.color}-rgb), 0.16)`,
+            '--indicator-box-shadow': 'inset 0 1px 1px rgba(255,255,255,0.25), 0 3px 8px rgba(0,0,0,0.18)',
+            fontWeight: '900', fontSize: '0.68rem', letterSpacing: '0.9px', textTransform: 'uppercase', minHeight: '38px'
+          } as React.CSSProperties}>P2</IonSegmentButton>
+          {materia.pesoPractico > 0 && <IonSegmentButton value="pr" style={{ 
+            '--color-checked': 'var(--ion-text-color)', 
+            '--indicator-color': `rgba(var(--ion-color-${materia.color}-rgb), 0.16)`,
+            '--indicator-box-shadow': 'inset 0 1px 1px rgba(255,255,255,0.25), 0 3px 8px rgba(0,0,0,0.18)',
+            fontWeight: '900', fontSize: '0.68rem', letterSpacing: '0.9px', textTransform: 'uppercase', minHeight: '38px'
+          } as React.CSSProperties}>Práctico</IonSegmentButton>}
         </IonSegment>
 
         <IonCard style={{ 
-          background: `linear-gradient(145deg, var(--ion-card-background), rgba(var(--ion-color-${materia.color}-rgb), 0.03))`, 
-          borderRadius: '20px', 
-          boxShadow: '0 8px 24px rgba(0,0,0,0.06)', 
-          border: `1px solid rgba(var(--ion-color-${materia.color}-rgb), 0.1)`,
+          background: `linear-gradient(145deg, var(--ion-card-background), rgba(var(--ion-color-${materia.color}-rgb), 0.05))`, 
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+          borderRadius: '22px', 
+          boxShadow: '0 12px 32px rgba(0,0,0,0.10), inset 0 1px 1px rgba(255,255,255,0.05)', 
+          border: `1px solid rgba(var(--ion-color-${materia.color}-rgb), 0.14)`,
           overflow: 'hidden' 
         }}>
           <IonCardContent style={{ padding: '24px' }}>
@@ -251,32 +287,45 @@ const Tab2: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ 
-              position: 'relative', height: '18px', background: 'var(--ion-color-step-100)', 
-              borderRadius: '12px', overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)' 
-            }}>
+            <div style={{ position: 'relative' }}>
               <div style={{ 
-                position: 'absolute', top: 0, left: 0, height: '100%', 
-                width: `${Math.min(notaSimuladaVisual, 100)}%`, 
-                background: alcanzaMeta 
-                  ? 'linear-gradient(90deg, #28ca67, #2dd36f)' 
-                  : `linear-gradient(90deg, var(--ion-color-${materia.color}-tint), var(--ion-color-${materia.color}))`, 
-                boxShadow: alcanzaMeta ? '0 0 12px rgba(45,211,111,0.6)' : 'none',
-                transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease', 
-                borderRadius: '12px' 
-              }} />
-              {/* Marcador de Meta */}
-              <div style={{ 
-                position: 'absolute', top: 0, left: `${materia.notaDeseada}%`, 
-                height: '100%', width: '4px', background: 'var(--ion-text-color)', 
-                boxShadow: '0 0 6px rgba(0,0,0,0.4)', zIndex: 2, borderRadius: '2px'
-              }} />
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.65rem', fontWeight: '800', color: 'var(--ion-color-medium)' }}>
-              <span>0</span>
-              <span style={{ position: 'absolute', left: `calc(${materia.notaDeseada}% - 14px)`, color: 'var(--ion-text-color)', letterSpacing: '0.5px' }}>META</span>
-              <span>100</span>
+                position: 'relative', height: '26px', 
+                background: 'rgba(var(--ion-text-color-rgb, 0,0,0), 0.04)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                borderRadius: '999px', overflow: 'visible', 
+                border: '1px solid rgba(var(--ion-text-color-rgb, 0,0,0), 0.06)',
+                boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.22), inset 0 -1px 2px rgba(255,255,255,0.05)',
+                padding: '3px'
+              }}>
+                <div style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    position: 'absolute', top: 0, left: 0, height: '100%', 
+                    width: `${Math.min(notaSimuladaVisual, 100)}%`, 
+                    background: alcanzaMeta 
+                      ? 'linear-gradient(90deg, #1fae56, #2dd36f, #6df5a0)' 
+                      : `linear-gradient(90deg, var(--ion-color-${materia.color}-shade), var(--ion-color-${materia.color}), var(--ion-color-${materia.color}-tint))`, 
+                    boxShadow: alcanzaMeta 
+                      ? '0 0 20px 4px rgba(45,211,111,0.75), 0 0 40px 10px rgba(45,211,111,0.35)' 
+                      : `0 0 10px 1px rgba(var(--ion-color-${materia.color}-rgb), 0.45)`,
+                    transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease, box-shadow 0.4s ease', 
+                    borderRadius: '999px' 
+                  }} />
+                </div>
+                {/* Marcador de Meta flotante */}
+                <div style={{ 
+                  position: 'absolute', top: '50%', left: `${materia.notaDeseada}%`, 
+                  transform: 'translate(-50%, -50%)',
+                  width: '6px', height: '34px', background: '#ffffff', borderRadius: '3px',
+                  boxShadow: '0 0 10px 2px rgba(255,255,255,0.85), 0 2px 6px rgba(0,0,0,0.45)', zIndex: 2
+                }} />
+              </div>
+
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '0.65rem', fontWeight: '800', color: 'var(--ion-color-medium)' }}>
+                <span>0</span>
+                <span style={{ position: 'absolute', left: `calc(${materia.notaDeseada}% - 14px)`, color: 'var(--ion-text-color)', letterSpacing: '0.5px' }}>META</span>
+                <span>100</span>
+              </div>
             </div>
           </IonCardContent>
         </IonCard>
@@ -323,12 +372,18 @@ const Tab2: React.FC = () => {
 
               return (
                 <IonCard key={cat.id} style={{ 
-                  background: 'var(--ion-card-background, #ffffff)', 
-                  borderRadius: '16px', 
+                  background: estaAlterado 
+                    ? `linear-gradient(145deg, rgba(var(--ion-color-${materia.color}-rgb), 0.10), rgba(var(--ion-color-${materia.color}-rgb), 0.02))`
+                    : 'var(--ion-card-background, #ffffff)', 
+                  backdropFilter: estaAlterado ? 'blur(12px)' : undefined,
+                  WebkitBackdropFilter: estaAlterado ? 'blur(12px)' : undefined,
+                  borderRadius: '18px', 
                   margin: '0 0 16px 0', 
-                  boxShadow: estaAlterado ? `0 4px 16px rgba(var(--ion-color-${materia.color}-rgb), 0.15)` : '0 2px 10px rgba(0,0,0,0.04)', 
-                  border: estaAlterado ? `1.5px solid var(--ion-color-${materia.color})` : '1px solid transparent',
-                  transition: 'all 0.3s ease'
+                  boxShadow: estaAlterado 
+                    ? `0 10px 28px rgba(var(--ion-color-${materia.color}-rgb), 0.24), inset 0 1px 1px rgba(255,255,255,0.06)` 
+                    : '0 2px 10px rgba(0,0,0,0.04)', 
+                  border: estaAlterado ? `1.5px solid rgba(var(--ion-color-${materia.color}-rgb), 0.55)` : '1px solid transparent',
+                  transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                   <div style={{ padding: '18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -350,16 +405,40 @@ const Tab2: React.FC = () => {
                           const val = e.detail.value as number;
                           setSimulacion(prev => ({ ...prev, [cat.id]: val }));
                         }}
-                        style={{ padding: 0, '--bar-background': 'var(--ion-color-step-150)', '--knob-size': '26px' }}
+                        style={{ 
+                          padding: 0, flex: 1,
+                          '--bar-background': 'rgba(var(--ion-color-medium-rgb), 0.18)', 
+                          '--bar-background-active': `linear-gradient(90deg, var(--ion-color-${alcanzaMeta ? 'success' : materia.color}-shade), var(--ion-color-${alcanzaMeta ? 'success' : materia.color}))`,
+                          '--bar-height': '6px',
+                          '--bar-border-radius': '999px',
+                          '--knob-size': '24px',
+                          '--knob-background': `var(--ion-color-${alcanzaMeta ? 'success' : materia.color})`,
+                          '--knob-box-shadow': `0 3px 10px rgba(var(--ion-color-${alcanzaMeta ? 'success' : materia.color}-rgb), 0.55)`
+                        } as React.CSSProperties}
                       />
-                      <div style={{ 
-                        background: estaAlterado ? `var(--ion-color-${materia.color})` : 'var(--ion-color-step-100)', 
-                        color: estaAlterado ? `var(--ion-color-${materia.color}-contrast)` : 'var(--ion-text-color)',
-                        padding: '8px 14px', borderRadius: '10px', fontWeight: '800', fontSize: '1.15rem', minWidth: '60px', textAlign: 'center', 
-                        transition: 'all 0.3s ease', boxShadow: estaAlterado ? `0 4px 10px rgba(var(--ion-color-${materia.color}-rgb), 0.3)` : 'none'
-                      }}>
-                        {valorSimulado.toFixed(0)}
-                      </div>
+                      <input
+                        type="number"
+                        className="predictor-glass-input"
+                        min={0}
+                        max={100}
+                        value={Number.isFinite(valorSimulado) ? valorSimulado : 0}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          if (raw === '') { setSimulacion(prev => ({ ...prev, [cat.id]: 0 })); return; }
+                          const val = clamp(Number(raw), 0, 100);
+                          if (!isNaN(val)) setSimulacion(prev => ({ ...prev, [cat.id]: val }));
+                        }}
+                        style={{ 
+                          width: '64px', textAlign: 'center', fontWeight: 800, fontSize: '1.15rem',
+                          padding: '10px 4px', borderRadius: '12px', minWidth: '60px',
+                          border: estaAlterado ? `1.5px solid var(--ion-color-${materia.color})` : '1px solid rgba(var(--ion-text-color-rgb, 0,0,0), 0.08)',
+                          background: estaAlterado ? `var(--ion-color-${materia.color})` : 'var(--ion-color-step-100)', 
+                          color: estaAlterado ? `var(--ion-color-${materia.color}-contrast)` : 'var(--ion-text-color)',
+                          outline: 'none', fontFamily: 'inherit',
+                          boxShadow: estaAlterado ? `0 4px 14px rgba(var(--ion-color-${materia.color}-rgb), 0.35)` : 'inset 0 1px 3px rgba(0,0,0,0.12)',
+                          transition: 'all 0.3s ease'
+                        }}
+                      />
                     </div>
                   </div>
                 </IonCard>
