@@ -52,7 +52,7 @@ const Tab2: React.FC = () => {
       <IonPage>
         <IonHeader className="ion-no-border">
           <IonToolbar>
-            <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
+            <IonTitle style={{ fontWeight: '800', letterSpacing: '-0.5px' }}>Predictor</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent fullscreen className="ion-padding">
@@ -70,7 +70,7 @@ const Tab2: React.FC = () => {
       <IonPage>
         <IonHeader className="ion-no-border">
           <IonToolbar>
-            <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
+            <IonTitle style={{ fontWeight: '800', letterSpacing: '-0.5px' }}>Predictor</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent fullscreen className="ion-padding">
@@ -151,7 +151,7 @@ const Tab2: React.FC = () => {
         notaMagica = Math.ceil(faltanteParcial / (cat.peso / 100));
       }
     }
-
+    
     setSimulacion(prev => ({ ...prev, [cat.id]: clamp(notaMagica, 0, 100) }));
   };
 
@@ -164,27 +164,34 @@ const Tab2: React.FC = () => {
     <IonPage>
       <IonHeader className="ion-no-border">
         <IonToolbar>
-          <IonTitle style={{ fontWeight: '800' }}>Predictor</IonTitle>
+          <IonTitle style={{ fontWeight: '800', letterSpacing: '-0.5px' }}>Predictor</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen className="ion-padding">
 
-        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', marginBottom: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
-          <IonItem lines="none" color="transparent">
+        <IonCard style={{ 
+          background: 'var(--ion-card-background, #ffffff)', 
+          borderRadius: '16px', 
+          marginBottom: '20px', 
+          boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+          border: '1px solid var(--ion-color-step-50)'
+        }}>
+          <IonItem lines="none" color="transparent" style={{ '--padding-top': '4px', '--padding-bottom': '4px' }}>
             <div style={{
-              width: '38px', height: '38px', minWidth: '38px', borderRadius: '10px',
+              width: '42px', height: '42px', minWidth: '42px', borderRadius: '12px',
               background: `var(--ion-color-${materia.color})`, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', marginRight: '12px'
+              justifyContent: 'center', marginRight: '14px',
+              boxShadow: `0 4px 10px rgba(var(--ion-color-${materia.color}-rgb), 0.3)`
             }}>
-              <IonIcon icon={obtenerIcono(materia.icono || 'school')} style={{ fontSize: '1.1rem', color: `var(--ion-color-${materia.color}-contrast)` }} />
+              <IonIcon icon={obtenerIcono(materia.icono || 'school')} style={{ fontSize: '1.2rem', color: `var(--ion-color-${materia.color}-contrast)` }} />
             </div>
             <IonLabel>
-              <p style={{ margin: '0 0 4px 0', fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '700' }}>Materia</p>
+              <p style={{ margin: '0 0 4px 0', fontSize: '0.65rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>Materia</p>
               <IonSelect
                 value={materiaId || materia.id}
                 onIonChange={e => handleCambiarMateria(e.detail.value)}
-                interface="popover"
-                style={{ fontWeight: '700', fontSize: '1rem', '--placeholder-color': 'var(--ion-text-color)' }}
+                interface="action-sheet"
+                style={{ fontWeight: '800', fontSize: '1.1rem', '--placeholder-color': 'var(--ion-text-color)', margin: 0 }}
               >
                 {materias.map(m => (
                   <IonSelectOption key={m.id} value={m.id}>{m.nombre}</IonSelectOption>
@@ -194,62 +201,87 @@ const Tab2: React.FC = () => {
           </IonItem>
         </IonCard>
 
-        {/* SEGMENTADOR DE ETAPAS */}
         <IonSegment 
+          mode="ios"
           value={modoPrediccion} 
           onIonChange={e => setModoPrediccion(e.detail.value as ModoPrediccion)} 
-          style={{ marginBottom: '18px', background: 'var(--ion-card-background)', borderRadius: '10px', padding: '4px' }}
+          style={{ 
+            marginBottom: '22px', 
+            background: 'var(--ion-color-step-50)', 
+            borderRadius: '12px', 
+            padding: '4px',
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04)' 
+          }}
         >
-          <IonSegmentButton value="todo">Global</IonSegmentButton>
-          <IonSegmentButton value="p1">P1</IonSegmentButton>
-          <IonSegmentButton value="p2">P2</IonSegmentButton>
-          {materia.pesoPractico > 0 && <IonSegmentButton value="pr">Práctico</IonSegmentButton>}
+          <IonSegmentButton value="todo" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>Global</IonSegmentButton>
+          <IonSegmentButton value="p1" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>P1</IonSegmentButton>
+          <IonSegmentButton value="p2" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>P2</IonSegmentButton>
+          {materia.pesoPractico > 0 && <IonSegmentButton value="pr" style={{ '--color-checked': 'var(--ion-text-color)', fontWeight: '700' }}>Práctico</IonSegmentButton>}
         </IonSegment>
 
-        <IonCard style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '16px', boxShadow: '0 4px 14px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <IonCardContent style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', marginBottom: '20px' }}>
+        <IonCard style={{ 
+          background: `linear-gradient(145deg, var(--ion-card-background), rgba(var(--ion-color-${materia.color}-rgb), 0.03))`, 
+          borderRadius: '20px', 
+          boxShadow: '0 8px 24px rgba(0,0,0,0.06)', 
+          border: `1px solid rgba(var(--ion-color-${materia.color}-rgb), 0.1)`,
+          overflow: 'hidden' 
+        }}>
+          <IonCardContent style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', marginBottom: '24px' }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>Meta {modoPrediccion !== 'todo' && 'Local'}</p>
-                <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{materia.notaDeseada}</p>
+                <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>Meta {modoPrediccion !== 'todo' && 'Local'}</p>
+                <p style={{ margin: '6px 0 0', fontWeight: '900', fontSize: '1.5rem', color: 'var(--ion-text-color)' }}>{materia.notaDeseada}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>Actual</p>
-                <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: 'var(--ion-text-color)' }}>{notaActualVisual.toFixed(1)}</p>
+                <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>Actual</p>
+                <p style={{ margin: '6px 0 0', fontWeight: '900', fontSize: '1.5rem', color: 'var(--ion-text-color)' }}>{notaActualVisual.toFixed(1)}</p>
               </div>
               <div style={{ flex: 1, borderLeft: '1px solid var(--ion-color-step-150)' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800' }}>
+                <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--ion-color-medium)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
                   {hayCambiosSimulados ? 'Simulado' : 'Acumulado'}
                 </p>
-                <p style={{ margin: '6px 0 0', fontWeight: '800', fontSize: '1.4rem', color: hayCambiosSimulados ? (alcanzaMeta ? 'var(--ion-color-success)' : `var(--ion-color-${materia.color})`) : 'var(--ion-text-color)' }}>
+                <p style={{ 
+                  margin: '6px 0 0', fontWeight: '900', fontSize: '1.5rem', 
+                  color: hayCambiosSimulados ? (alcanzaMeta ? 'var(--ion-color-success)' : `var(--ion-color-${materia.color})`) : 'var(--ion-text-color)',
+                  textShadow: hayCambiosSimulados && alcanzaMeta ? '0 0 12px rgba(var(--ion-color-success-rgb), 0.4)' : 'none',
+                  transition: 'color 0.3s ease, text-shadow 0.3s ease'
+                }}>
                   {notaSimuladaVisual.toFixed(1)}
                 </p>
               </div>
             </div>
 
-            <div style={{ position: 'relative', height: '14px', background: 'var(--ion-color-step-150)', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{ 
+              position: 'relative', height: '18px', background: 'var(--ion-color-step-100)', 
+              borderRadius: '12px', overflow: 'hidden', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)' 
+            }}>
               <div style={{ 
                 position: 'absolute', top: 0, left: 0, height: '100%', 
                 width: `${Math.min(notaSimuladaVisual, 100)}%`, 
-                background: alcanzaMeta ? 'var(--ion-color-success)' : `var(--ion-color-${materia.color})`, 
-                transition: 'width 0.4s ease, background 0.4s ease', borderRadius: '10px' 
+                background: alcanzaMeta 
+                  ? 'linear-gradient(90deg, #28ca67, #2dd36f)' 
+                  : `linear-gradient(90deg, var(--ion-color-${materia.color}-tint), var(--ion-color-${materia.color}))`, 
+                boxShadow: alcanzaMeta ? '0 0 12px rgba(45,211,111,0.6)' : 'none',
+                transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease', 
+                borderRadius: '12px' 
               }} />
+              {/* Marcador de Meta */}
               <div style={{ 
                 position: 'absolute', top: 0, left: `${materia.notaDeseada}%`, 
                 height: '100%', width: '4px', background: 'var(--ion-text-color)', 
-                boxShadow: '0 0 4px rgba(0,0,0,0.5)', zIndex: 2
+                boxShadow: '0 0 6px rgba(0,0,0,0.4)', zIndex: 2, borderRadius: '2px'
               }} />
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.65rem', fontWeight: '700', color: 'var(--ion-color-medium)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.65rem', fontWeight: '800', color: 'var(--ion-color-medium)' }}>
               <span>0</span>
-              <span style={{ position: 'absolute', left: `calc(${materia.notaDeseada}% - 12px)`, color: 'var(--ion-text-color)' }}>META</span>
+              <span style={{ position: 'absolute', left: `calc(${materia.notaDeseada}% - 14px)`, color: 'var(--ion-text-color)', letterSpacing: '0.5px' }}>META</span>
               <span>100</span>
             </div>
           </IonCardContent>
         </IonCard>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', margin: '25px 0 12px 5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', margin: '28px 0 14px 5px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <IonIcon icon={flaskOutline} color="medium" style={{ fontSize: '1.1rem' }} />
             <IonText color="medium">
@@ -259,25 +291,26 @@ const Tab2: React.FC = () => {
             </IonText>
           </div>
           {hayCambiosSimulados && (
-            <IonButton expand="block" fill="clear" color="danger" onClick={() => { limpiarSimulacion(); }} style={{ fontWeight: '800' }}>
+            <IonButton fill="clear" color="danger" onClick={() => { limpiarSimulacion(); }} style={{ fontWeight: '800', '--padding-end': '0' }}>
               <IonIcon icon={refreshOutline} slot="start" /> Limpiar
             </IonButton>
           )}
         </div>
 
+  
         {(!alcanzaMeta && statsReales.notaNecesaria <= 100) && (
-          <IonButton expand="block" fill="outline" color={materia.color} onClick={usarNotaNecesaria} style={{ marginBottom: '16px', fontWeight: '700' }}>
+          <IonButton expand="block" fill="outline" color={materia.color} onClick={usarNotaNecesaria} style={{ marginBottom: '20px', fontWeight: '800', borderRadius: '12px', height: '48px' }}>
             <IonIcon icon={sparklesOutline} slot="start" />
             {modoPrediccion === 'todo' ? `Usar nota global necesaria (${statsReales.notaNecesaria.toFixed(1)})` : `Llenar para llegar a ${materia.notaDeseada}`}
           </IonButton>
         )}
 
         {seccionesARenderizar.map(seccion => (
-          <div key={seccion.id} style={{ marginBottom: '20px' }}>
+          <div key={seccion.id} style={{ marginBottom: '24px' }}>
             {modoPrediccion === 'todo' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '15px 0 10px 5px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '18px 0 12px 5px' }}>
                 <IonIcon icon={layersOutline} color="medium" style={{ fontSize: '1rem' }} />
-                <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: '800', color: 'var(--ion-color-medium)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <h3 style={{ margin: 0, fontSize: '0.8rem', fontWeight: '800', color: 'var(--ion-color-medium)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   {seccion.titulo}
                 </h3>
               </div>
@@ -289,11 +322,18 @@ const Tab2: React.FC = () => {
               const estaAlterado = simulacion[cat.id] !== undefined;
 
               return (
-                <IonCard key={cat.id} style={{ background: 'var(--ion-card-background, #ffffff)', borderRadius: '14px', margin: '0 0 14px 0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: estaAlterado ? `1px solid var(--ion-color-${materia.color})` : '1px solid transparent' }}>
-                  <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <IonCard key={cat.id} style={{ 
+                  background: 'var(--ion-card-background, #ffffff)', 
+                  borderRadius: '16px', 
+                  margin: '0 0 16px 0', 
+                  boxShadow: estaAlterado ? `0 4px 16px rgba(var(--ion-color-${materia.color}-rgb), 0.15)` : '0 2px 10px rgba(0,0,0,0.04)', 
+                  border: estaAlterado ? `1.5px solid var(--ion-color-${materia.color})` : '1px solid transparent',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{ padding: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                       <div>
-                        <h3 style={{ fontWeight: '800', fontSize: '1.05rem', margin: '0 0 4px 0', color: 'var(--ion-text-color)' }}>{cat.nombre}</h3>
+                        <h3 style={{ fontWeight: '800', fontSize: '1.1rem', margin: '0 0 4px 0', color: 'var(--ion-text-color)' }}>{cat.nombre}</h3>
                         <p style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)', margin: 0, fontWeight: '600' }}>Peso en la etapa: {cat.peso}% • Nota Base: {notaReal.toFixed(1)}</p>
                       </div>
                       <IonButton fill="clear" size="small" color="warning" onClick={() => aplicarMagiaEnActividad(cat, seccion.id)} title="Auto-completar nota necesaria aquí">
@@ -301,7 +341,7 @@ const Tab2: React.FC = () => {
                       </IonButton>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '10px' }}>
                       <IonRange 
                         min={0} max={100} step={1} 
                         value={valorSimulado} 
@@ -310,12 +350,13 @@ const Tab2: React.FC = () => {
                           const val = e.detail.value as number;
                           setSimulacion(prev => ({ ...prev, [cat.id]: val }));
                         }}
-                        style={{ padding: 0, '--bar-background': 'var(--ion-color-step-150)', '--knob-size': '24px' }}
+                        style={{ padding: 0, '--bar-background': 'var(--ion-color-step-150)', '--knob-size': '26px' }}
                       />
                       <div style={{ 
                         background: estaAlterado ? `var(--ion-color-${materia.color})` : 'var(--ion-color-step-100)', 
                         color: estaAlterado ? `var(--ion-color-${materia.color}-contrast)` : 'var(--ion-text-color)',
-                        padding: '6px 12px', borderRadius: '8px', fontWeight: '800', fontSize: '1.1rem', minWidth: '55px', textAlign: 'center', transition: 'all 0.3s ease'
+                        padding: '8px 14px', borderRadius: '10px', fontWeight: '800', fontSize: '1.15rem', minWidth: '60px', textAlign: 'center', 
+                        transition: 'all 0.3s ease', boxShadow: estaAlterado ? `0 4px 10px rgba(var(--ion-color-${materia.color}-rgb), 0.3)` : 'none'
                       }}>
                         {valorSimulado.toFixed(0)}
                       </div>
@@ -329,19 +370,21 @@ const Tab2: React.FC = () => {
 
         <div style={{
           background: alcanzaMeta ? 'rgba(var(--ion-color-success-rgb), 0.15)' : 'var(--ion-color-step-100)',
-          marginTop: '10px', borderRadius: '14px', padding: '20px', textAlign: 'center'
+          marginTop: '10px', borderRadius: '16px', padding: '24px', textAlign: 'center',
+          border: alcanzaMeta ? '1px solid rgba(var(--ion-color-success-rgb), 0.3)' : '1px solid transparent',
+          transition: 'all 0.4s ease'
         }}>
           {alcanzaMeta ? (
             <>
-              <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '1.8rem', color: 'var(--ion-color-success)' }} />
-              <p style={{ color: 'var(--ion-color-success)', fontWeight: '800', margin: '8px 0 0', fontSize: '0.95rem' }}>
-                Con estos valores, alcanzas la meta de {modoPrediccion === 'todo' ? 'la materia' : 'este parcial'}
+              <IonIcon icon={checkmarkCircleOutline} style={{ fontSize: '2rem', color: 'var(--ion-color-success)' }} />
+              <p style={{ color: 'var(--ion-color-success)', fontWeight: '800', margin: '10px 0 0', fontSize: '1rem', letterSpacing: '0.3px' }}>
+                ¡Con estos valores, alcanzas la meta de {modoPrediccion === 'todo' ? 'la materia' : 'este parcial'}!
               </p>
             </>
           ) : (
             <>
-              <IonIcon icon={warningOutline} style={{ fontSize: '1.8rem', color: 'var(--ion-color-medium)' }} />
-              <p style={{ color: 'var(--ion-text-color)', fontWeight: '800', margin: '8px 0 2px', fontSize: '0.95rem' }}>
+              <IonIcon icon={warningOutline} style={{ fontSize: '2rem', color: 'var(--ion-color-medium)' }} />
+              <p style={{ color: 'var(--ion-text-color)', fontWeight: '800', margin: '10px 0 2px', fontSize: '1rem', letterSpacing: '0.3px' }}>
                 Te faltan {faltanteVisual.toFixed(1)} puntos para tu meta
               </p>
             </>
