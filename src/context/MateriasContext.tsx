@@ -59,26 +59,31 @@ const materiaPorDefecto: Materia[] = [
     color: 'ambar', 
     icono: 'calculator',
     notaDeseada: 70,
-    etapa: 1,
+    etapa: 3, // Etapa 3 porque ya se llenó P1 y P2
     pesoTeorico: 70,
     pesoPractico: 30,
     categoriasP1: [
       {
-        id: 'c1', nombre: 'Control de Lectura', peso: 50, notaGlobalRapida: 0,
+        id: 'c1', nombre: 'Control de Lectura', peso: 40, notaGlobalRapida: 0,
         subActividades: [
-          { id: 's1', nombre: 'C1', notaObtenida: 4, notaMaxima: 5 },
+          { id: 's1', nombre: 'C1', notaObtenida: 4.5, notaMaxima: 5 },
           { id: 's2', nombre: 'C2', notaObtenida: 5, notaMaxima: 5 }
         ]
       },
-      { id: 'c2', nombre: 'Examen', peso: 50, notaGlobalRapida: 60, subActividades: [] }
+      { id: 'c2', nombre: 'Examen P1', peso: 60, notaGlobalRapida: 75, subActividades: [] }
     ],
-    categoriasP2: [],
-    categoriasPractico: [],
+    categoriasP2: [
+      { id: 'c3', nombre: 'Lecciones', peso: 30, notaGlobalRapida: 85, subActividades: [] },
+      { id: 'c4', nombre: 'Examen P2', peso: 70, notaGlobalRapida: 68, subActividades: [] }
+    ],
+    categoriasPractico: [
+      { id: 'c5', nombre: 'Laboratorio Práctico', peso: 100, notaGlobalRapida: 80, subActividades: [] }
+    ],
     historial: [
-      { fecha: '2026-07-20', valor: 10.5 },
-      { fecha: '2026-07-28', valor: 18.0 },
-      { fecha: '2026-08-05', valor: 23.5 },
-      { fecha: '2026-08-09', valor: 26.3 }
+      { fecha: '2026-06-15', valor: 15.5 },
+      { fecha: '2026-06-28', valor: 32.0 },
+      { fecha: '2026-07-15', valor: 55.5 },
+      { fecha: '2026-08-09', valor: 76.8 } // Nota final acumulada aprox.
     ]
   },
   {
@@ -87,24 +92,52 @@ const materiaPorDefecto: Materia[] = [
     color: 'verde',
     icono: 'school', 
     notaDeseada: 80,
-    etapa: 2,
+    etapa: 3,
     pesoTeorico: 70,
     pesoPractico: 30,
     categoriasP1: [
-      { id: 'c3', nombre: 'Lecciones', peso: 30, notaGlobalRapida: 85, subActividades: [] },
-      { id: 'c4', nombre: 'Examen P1', peso: 70, notaGlobalRapida: 72, subActividades: [] }
+      { id: 'c6', nombre: 'Lecciones', peso: 30, notaGlobalRapida: 85, subActividades: [] },
+      { id: 'c7', nombre: 'Examen P1', peso: 70, notaGlobalRapida: 72, subActividades: [] }
     ],
     categoriasP2: [
-      { id: 'c5', nombre: 'Talleres', peso: 40, notaGlobalRapida: 90, subActividades: [] }
+      { id: 'c8', nombre: 'Talleres', peso: 40, notaGlobalRapida: 90, subActividades: [] },
+      { id: 'c9', nombre: 'Examen P2', peso: 60, notaGlobalRapida: 88, subActividades: [] }
     ],
     categoriasPractico: [
-      { id: 'c6', nombre: 'Proyecto Web', peso: 100, notaGlobalRapida: 80, subActividades: [] }
+      { id: 'c10', nombre: 'Proyecto Web', peso: 100, notaGlobalRapida: 95, subActividades: [] }
     ],
     historial: [
-      { fecha: '2026-07-15', valor: 45.0 },
-      { fecha: '2026-07-28', valor: 55.5 },
-      { fecha: '2026-08-04', valor: 68.2 },
-      { fecha: '2026-08-09', valor: 75.8 }
+      { fecha: '2026-06-10', valor: 18.0 },
+      { fecha: '2026-06-25', valor: 38.5 },
+      { fecha: '2026-07-20', valor: 68.2 },
+      { fecha: '2026-08-15', valor: 85.3 } // Superó la meta de 80
+    ]
+  },
+  {
+    id: '3',
+    nombre: 'Redes de Computadoras',
+    color: 'morado', // Usamos el siguiente color en tu paleta
+    icono: 'wifi', 
+    notaDeseada: 75,
+    etapa: 1, // Recién en el primer parcial
+    pesoTeorico: 70,
+    pesoPractico: 30,
+    categoriasP1: [
+      { id: 'c11', nombre: 'Laboratorios Cisco', peso: 40, notaGlobalRapida: 92, subActividades: [] },
+      { id: 'c12', nombre: 'Examen Teórico', peso: 60, notaGlobalRapida: 60, subActividades: [] }
+    ],
+    categoriasP2: [],
+    categoriasPractico: [],
+    // Historial largo para probar la curva del gráfico Sparkline
+    historial: [
+      { fecha: '2026-05-01', valor: 0.0 },
+      { fecha: '2026-05-15', valor: 3.5 },
+      { fecha: '2026-06-02', valor: 8.8 },
+      { fecha: '2026-06-18', valor: 12.4 },
+      { fecha: '2026-07-05', valor: 16.9 },
+      { fecha: '2026-07-20', valor: 19.1 },
+      { fecha: '2026-08-05', valor: 22.5 },
+      { fecha: '2026-08-18', valor: 25.4 }
     ]
   }
 ];
