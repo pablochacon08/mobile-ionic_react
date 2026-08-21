@@ -5,9 +5,10 @@
 **Mis Calificaciones** no es solo una libreta de notas digital. Es una herramienta inteligente diseñada para dar paz mental a los estudiantes universitarios. Permite llevar un control exacto del semestre, visualizar el progreso en tiempo real y, a través de su algoritmo predictivo, calcular matemáticamente la calificación exacta que se necesita en futuras evaluaciones para alcanzar una meta académica.
 
 <p align="center">
-  <img src="./screenshots/1.jpeg" width="30%" alt="Vista del Dashboard" />
-  <img src="./screenshots/2.jpeg" width="30%" alt="Vista del Predictor" />
-  <img src="./screenshots/3.jpeg" width="30%" alt="Vista de Escalas" />
+  <img src="./screenshots/1.jpeg" width="24%" alt="Vista del Dashboard" />
+  <img src="./screenshots/4.jpeg" width="24%" alt="Vista de Calificaciones" />
+  <img src="./screenshots/2.jpeg" width="24%" alt="Vista del Predictor" />
+  <img src="./screenshots/3.jpeg" width="24%" alt="Vista de Escalas" /> 
 </p>
 
 ---
